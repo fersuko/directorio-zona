@@ -1,0 +1,612 @@
+[
+  {
+    "id": 293542771,
+    "name": "Benavides",
+    "category": "Farmacia",
+    "lat": 25.6673184,
+    "lng": -100.3120206,
+    "address": "Centro, Monterrey",
+    "description": "Negocio local en el centro.",
+    "isPremium": false
+  },
+  {
+    "id": 1304841787,
+    "name": "La Galería Café",
+    "category": "Restaurante",
+    "lat": 25.6663565,
+    "lng": -100.3075146,
+    "address": "Centro, Monterrey",
+    "description": "Cocina: international",
+    "isPremium": false
+  },
+  {
+    "id": 1304896228,
+    "name": "Tenerias",
+    "category": "Restaurante",
+    "lat": 25.6705029,
+    "lng": -100.305995,
+    "address": "Centro, Monterrey",
+    "description": "Negocio local en el centro.",
+    "isPremium": false
+  },
+  {
+    "id": 1305044105,
+    "name": "Neuquen",
+    "category": "Restaurante",
+    "lat": 25.669773,
+    "lng": -100.3083402,
+    "address": "Dr. Jose María Coss 659",
+    "description": "Cocina: argentinian",
+    "isPremium": false
+  },
+  {
+    "id": 1354211191,
+    "name": "Madre Oaxaca",
+    "category": "Restaurante",
+    "lat": 25.6650012,
+    "lng": -100.3089142,
+    "address": "Centro, Monterrey",
+    "description": "Cocina: mexican",
+    "isPremium": false
+  },
+  {
+    "id": 1387117646,
+    "name": "Sierra Madre Brewing Co",
+    "category": "Restaurante",
+    "lat": 25.666908,
+    "lng": -100.3110266,
+    "address": "Centro, Monterrey",
+    "description": "Negocio local en el centro.",
+    "isPremium": false
+  },
+  {
+    "id": 2077113406,
+    "name": "La Casa del Maiz",
+    "category": "Restaurante",
+    "lat": 25.6656852,
+    "lng": -100.3080559,
+    "address": "Centro, Monterrey",
+    "description": "Cocina: mexican",
+    "isPremium": false
+  },
+  {
+    "id": 2077113407,
+    "name": "Trece Lunas",
+    "category": "Cafetería",
+    "lat": 25.6656927,
+    "lng": -100.3081324,
+    "address": "José Mariano Abasolo ",
+    "description": "Negocio local en el centro.",
+    "isPremium": false
+  },
+  {
+    "id": 2121903778,
+    "name": "San Luisito",
+    "category": "Restaurante",
+    "lat": 25.6713228,
+    "lng": -100.3065444,
+    "address": "Centro, Monterrey",
+    "description": "Cocina: regional",
+    "isPremium": false
+  },
+  {
+    "id": 2276211376,
+    "name": "Afirme",
+    "category": "Banco",
+    "lat": 25.6681237,
+    "lng": -100.3113894,
+    "address": "Centro, Monterrey",
+    "description": "Negocio local en el centro.",
+    "isPremium": false
+  },
+  {
+    "id": 2276211381,
+    "name": "Banorte",
+    "category": "Banco",
+    "lat": 25.6685563,
+    "lng": -100.3139266,
+    "address": "Centro, Monterrey",
+    "description": "Negocio local en el centro.",
+    "isPremium": false
+  },
+  {
+    "id": 2276211384,
+    "name": "Benavides",
+    "category": "Farmacia",
+    "lat": 25.6687313,
+    "lng": -100.315249,
+    "address": "Centro, Monterrey",
+    "description": "Negocio local en el centro.",
+    "isPremium": false
+  },
+  {
+    "id": 2276211392,
+    "name": "Porrúa",
+    "category": "Librería",
+    "lat": 25.6681642,
+    "lng": -100.3115772,
+    "address": "Centro, Monterrey",
+    "description": "Negocio local en el centro.",
+    "isPremium": false
+  },
+  {
+    "id": 2276211401,
+    "name": "Vips",
+    "category": "Restaurante",
+    "lat": 25.6683681,
+    "lng": -100.313004,
+    "address": "Centro, Monterrey",
+    "description": "Cocina: mexican",
+    "isPremium": false
+  },
+  {
+    "id": 2392312192,
+    "name": "Andolini",
+    "category": "Restaurante",
+    "lat": 25.6660332,
+    "lng": -100.3054798,
+    "address": "Centro, Monterrey",
+    "description": "Cocina: italian",
+    "isPremium": false
+  },
+  {
+    "id": 2392312311,
+    "name": "Govinda",
+    "category": "Restaurante",
+    "lat": 25.6702034,
+    "lng": -100.3052008,
+    "address": "Centro, Monterrey",
+    "description": "Negocio local en el centro.",
+    "isPremium": false
+  },
+  {
+    "id": 2414233930,
+    "name": "Café Nuevo Brasil",
+    "category": "Cafetería",
+    "lat": 25.6747534,
+    "lng": -100.309767,
+    "address": "Centro, Monterrey",
+    "description": "Negocio local en el centro.",
+    "isPremium": false
+  },
+  {
+    "id": 2414234440,
+    "name": "El Argentino",
+    "category": "Confectionery",
+    "lat": 25.6722335,
+    "lng": -100.307724,
+    "address": "Centro, Monterrey",
+    "description": "Negocio local en el centro.",
+    "isPremium": true,
+    "image": "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&q=80"
+  },
+  {
+    "id": 2642874091,
+    "name": "Montana",
+    "category": "Restaurante",
+    "lat": 25.6678371,
+    "lng": -100.3171891,
+    "address": "Centro, Monterrey",
+    "description": "Negocio local en el centro.",
+    "isPremium": false
+  },
+  {
+    "id": 3521764880,
+    "name": "MM Cinemas",
+    "category": "Cinema",
+    "lat": 25.6705752,
+    "lng": -100.3110959,
+    "address": "Centro, Monterrey",
+    "description": "Negocio local en el centro.",
+    "isPremium": true,
+    "image": "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&q=80"
+  },
+  {
+    "id": 3521828417,
+    "name": "Josephino's",
+    "category": "Comida Rápida",
+    "lat": 25.6681846,
+    "lng": -100.3107531,
+    "address": "Centro, Monterrey",
+    "description": "Negocio local en el centro.",
+    "isPremium": false
+  },
+  {
+    "id": 3786396163,
+    "name": "7-Eleven",
+    "category": "Tienda de Conveniencia",
+    "lat": 25.6735302,
+    "lng": -100.3135309,
+    "address": "Centro, Monterrey",
+    "description": "Negocio local en el centro.",
+    "isPremium": false
+  },
+  {
+    "id": 3786396199,
+    "name": "HSBC",
+    "category": "Banco",
+    "lat": 25.6684411,
+    "lng": -100.3150337,
+    "address": "Padre Mier ",
+    "description": "Negocio local en el centro.",
+    "isPremium": false
+  },
+  {
+    "id": 3786396200,
+    "name": "CINEPOLIS",
+    "category": "Cinema",
+    "lat": 25.6681094,
+    "lng": -100.315302,
+    "address": "Centro, Monterrey",
+    "description": "Negocio local en el centro.",
+    "isPremium": false
+  },
+  {
+    "id": 3786396205,
+    "name": "Mixup",
+    "category": "Music",
+    "lat": 25.6676245,
+    "lng": -100.3125421,
+    "address": "Paras 805 - A",
+    "description": "Negocio local en el centro.",
+    "isPremium": false
+  },
+  {
+    "id": 3786396208,
+    "name": "Sanborns",
+    "category": "Tienda de Conveniencia",
+    "lat": 25.6671364,
+    "lng": -100.312326,
+    "address": "Centro, Monterrey",
+    "description": "Negocio local en el centro.",
+    "isPremium": true,
+    "image": "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&q=80"
+  },
+  {
+    "id": 3786396209,
+    "name": "The Home Depot",
+    "category": "Doityourself",
+    "lat": 25.6671383,
+    "lng": -100.31251,
+    "address": "Centro, Monterrey",
+    "description": "Negocio local en el centro.",
+    "isPremium": false
+  },
+  {
+    "id": 3786486988,
+    "name": "Saharis",
+    "category": "Music",
+    "lat": 25.6671747,
+    "lng": -100.3122349,
+    "address": "Centro, Monterrey",
+    "description": "Negocio local en el centro.",
+    "isPremium": false
+  },
+  {
+    "id": 3786486989,
+    "name": "Jungla de TIMO",
+    "category": "Pet",
+    "lat": 25.6672221,
+    "lng": -100.3115456,
+    "address": "Centro, Monterrey",
+    "description": "Negocio local en el centro.",
+    "isPremium": false
+  },
+  {
+    "id": 3786486994,
+    "name": "El Pollo Loco",
+    "category": "Comida Rápida",
+    "lat": 25.6694766,
+    "lng": -100.315154,
+    "address": "Benito Juárez 701",
+    "description": "Cocina: mexican",
+    "isPremium": false
+  },
+  {
+    "id": 3786486999,
+    "name": "7-Eleven",
+    "category": "Tienda de Conveniencia",
+    "lat": 25.6771206,
+    "lng": -100.314096,
+    "address": "Ruperto Martinez ",
+    "description": "Negocio local en el centro.",
+    "isPremium": false
+  },
+  {
+    "id": 3786487000,
+    "name": "KFC",
+    "category": "Comida Rápida",
+    "lat": 25.6771907,
+    "lng": -100.314499,
+    "address": "Benito Juárez 208",
+    "description": "Cocina: chicken",
+    "isPremium": false
+  },
+  {
+    "id": 3786487001,
+    "name": "Banamex",
+    "category": "Banco",
+    "lat": 25.6777521,
+    "lng": -100.314365,
+    "address": "Albino Espinosa 315",
+    "description": "Negocio local en el centro.",
+    "isPremium": false
+  },
+  {
+    "id": 3786489051,
+    "name": "Casa Blanca",
+    "category": "Casino",
+    "lat": 25.6678015,
+    "lng": -100.3036527,
+    "address": "Centro, Monterrey",
+    "description": "Negocio local en el centro.",
+    "isPremium": false
+  },
+  {
+    "id": 3786489055,
+    "name": "7-Eleven",
+    "category": "Tienda de Conveniencia",
+    "lat": 25.666263,
+    "lng": -100.303997,
+    "address": "Centro, Monterrey",
+    "description": "Negocio local en el centro.",
+    "isPremium": true,
+    "image": "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&q=80"
+  },
+  {
+    "id": 3786489064,
+    "name": "El Rey del Cabrito",
+    "category": "Restaurante",
+    "lat": 25.6637248,
+    "lng": -100.3092109,
+    "address": "Av. Constitución ",
+    "description": "Cocina: regional",
+    "isPremium": false
+  },
+  {
+    "id": 3786489070,
+    "name": "Nueva Luna Margaritas & Grill",
+    "category": "Restaurante",
+    "lat": 25.6672905,
+    "lng": -100.3088412,
+    "address": "Centro, Monterrey",
+    "description": "Negocio local en el centro.",
+    "isPremium": false
+  },
+  {
+    "id": 3786489080,
+    "name": "La Casona de Sta Lucía",
+    "category": "Restaurante",
+    "lat": 25.670334,
+    "lng": -100.3061633,
+    "address": "Centro, Monterrey",
+    "description": "Negocio local en el centro.",
+    "isPremium": false
+  },
+  {
+    "id": 3786489082,
+    "name": "Café Iguana",
+    "category": "Nightclub",
+    "lat": 25.6661519,
+    "lng": -100.3075348,
+    "address": "Centro, Monterrey",
+    "description": "Negocio local en el centro.",
+    "isPremium": false
+  },
+  {
+    "id": 3786608480,
+    "name": "Pizza Hut",
+    "category": "Restaurante",
+    "lat": 25.6678307,
+    "lng": -100.319349,
+    "address": "Centro, Monterrey",
+    "description": "Cocina: pizza",
+    "isPremium": true,
+    "image": "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&q=80"
+  },
+  {
+    "id": 3786608486,
+    "name": "josephino´s",
+    "category": "Comida Rápida",
+    "lat": 25.6687679,
+    "lng": -100.3186574,
+    "address": "Centro, Monterrey",
+    "description": "Cocina: pizza",
+    "isPremium": false
+  },
+  {
+    "id": 3786619585,
+    "name": "Oxxo",
+    "category": "Tienda de Conveniencia",
+    "lat": 25.6609277,
+    "lng": -100.3134612,
+    "address": "Centro, Monterrey",
+    "description": "Negocio local en el centro.",
+    "isPremium": true,
+    "image": "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&q=80"
+  },
+  {
+    "id": 3822055923,
+    "name": "Parisina",
+    "category": "Fabric",
+    "lat": 25.6681608,
+    "lng": -100.3156235,
+    "address": "Centro, Monterrey",
+    "description": "Negocio local en el centro.",
+    "isPremium": false
+  },
+  {
+    "id": 3822055924,
+    "name": "Caperucita",
+    "category": "Ropa",
+    "lat": 25.6675395,
+    "lng": -100.3152238,
+    "address": "Centro, Monterrey",
+    "description": "Negocio local en el centro.",
+    "isPremium": true,
+    "image": "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&q=80"
+  },
+  {
+    "id": 3822055929,
+    "name": "Saharis",
+    "category": "Music",
+    "lat": 25.6674766,
+    "lng": -100.3132041,
+    "address": "Centro, Monterrey",
+    "description": "Negocio local en el centro.",
+    "isPremium": false
+  },
+  {
+    "id": 3822055930,
+    "name": "Iusacell",
+    "category": "Celulares",
+    "lat": 25.6678707,
+    "lng": -100.3132443,
+    "address": "Centro, Monterrey",
+    "description": "Negocio local en el centro.",
+    "isPremium": false
+  },
+  {
+    "id": 3822055931,
+    "name": "lucky´s tatto´s",
+    "category": "Tattoo",
+    "lat": 25.6676096,
+    "lng": -100.312724,
+    "address": "Centro, Monterrey",
+    "description": "Negocio local en el centro.",
+    "isPremium": false
+  },
+  {
+    "id": 3822056084,
+    "name": "Domino's",
+    "category": "Comida Rápida",
+    "lat": 25.6655307,
+    "lng": -100.313449,
+    "address": "Centro, Monterrey",
+    "description": "Cocina: pizza",
+    "isPremium": false
+  },
+  {
+    "id": 3827470953,
+    "name": "7-Eleven",
+    "category": "Tienda de Conveniencia",
+    "lat": 25.6717698,
+    "lng": -100.3137963,
+    "address": "Centro, Monterrey",
+    "description": "Negocio local en el centro.",
+    "isPremium": true,
+    "image": "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&q=80"
+  },
+  {
+    "id": 3827635708,
+    "name": "Las Alitas",
+    "category": "Comida Rápida",
+    "lat": 25.6680393,
+    "lng": -100.3108214,
+    "address": "Centro, Monterrey",
+    "description": "Negocio local en el centro.",
+    "isPremium": true,
+    "image": "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&q=80"
+  },
+  {
+    "id": 3827657186,
+    "name": "Estafeta",
+    "category": "Post_office",
+    "lat": 25.6758888,
+    "lng": -100.3191165,
+    "address": "Centro, Monterrey",
+    "description": "Negocio local en el centro.",
+    "isPremium": false
+  },
+  {
+    "id": 4052000619,
+    "name": "La Anácua",
+    "category": "Restaurante",
+    "lat": 25.6639715,
+    "lng": -100.3077389,
+    "address": "Centro, Monterrey",
+    "description": "Negocio local en el centro.",
+    "isPremium": false
+  },
+  {
+    "id": 4052000620,
+    "name": "Feelgrow",
+    "category": "Restaurante",
+    "lat": 25.6663112,
+    "lng": -100.3089321,
+    "address": "Centro, Monterrey",
+    "description": "Negocio local en el centro.",
+    "isPremium": false
+  },
+  {
+    "id": 4052000621,
+    "name": "Cafe Iguana",
+    "category": "Bar",
+    "lat": 25.666705,
+    "lng": -100.3074137,
+    "address": "Centro, Monterrey",
+    "description": "Negocio local en el centro.",
+    "isPremium": false
+  },
+  {
+    "id": 4052000622,
+    "name": "Salón Morelos",
+    "category": "Bar",
+    "lat": 25.6664995,
+    "lng": -100.3070811,
+    "address": "Centro, Monterrey",
+    "description": "Negocio local en el centro.",
+    "isPremium": true,
+    "image": "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&q=80"
+  },
+  {
+    "id": 4052000623,
+    "name": "La Chunga",
+    "category": "Restaurante",
+    "lat": 25.6662481,
+    "lng": -100.306885,
+    "address": "Centro, Monterrey",
+    "description": "Negocio local en el centro.",
+    "isPremium": false
+  },
+  {
+    "id": 4052000624,
+    "name": "Punta del Cielo",
+    "category": "Cafetería",
+    "lat": 25.669108,
+    "lng": -100.3084946,
+    "address": "Centro, Monterrey",
+    "description": "Negocio local en el centro.",
+    "isPremium": false
+  },
+  {
+    "id": 4052000626,
+    "name": "Tierra Libre",
+    "category": "Cafetería",
+    "lat": 25.6682227,
+    "lng": -100.3064199,
+    "address": "Centro, Monterrey",
+    "description": "Negocio local en el centro.",
+    "isPremium": false
+  },
+  {
+    "id": 4052000631,
+    "name": "Las Mariposas",
+    "category": "Restaurante",
+    "lat": 25.670729,
+    "lng": -100.307481,
+    "address": "Centro, Monterrey",
+    "description": "Negocio local en el centro.",
+    "isPremium": false
+  },
+  {
+    "id": 4086955629,
+    "name": "Oxxo",
+    "category": "Tienda de Conveniencia",
+    "lat": 25.6681658,
+    "lng": -100.3118538,
+    "address": "Centro, Monterrey",
+    "description": "Negocio local en el centro.",
+    "isPremium": false
+  }
+]

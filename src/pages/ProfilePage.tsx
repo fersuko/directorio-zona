@@ -3,7 +3,7 @@ import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../components/ui/Button";
 import { motion } from "framer-motion";
-import { User, LogOut, Settings, Heart, Shield } from "lucide-react";
+import { User, LogOut, Settings, Heart, Shield, Store } from "lucide-react";
 import type { Session } from "@supabase/supabase-js";
 
 export default function ProfilePage() {
@@ -123,6 +123,7 @@ export default function ProfilePage() {
 
                 <motion.button
                     whileTap={{ scale: 0.98 }}
+                    onClick={() => navigate("/settings")}
                     className="w-full glass p-4 rounded-xl flex items-center gap-3 hover:bg-white/5 transition-colors"
                 >
                     <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500">
@@ -134,19 +135,35 @@ export default function ProfilePage() {
                     </div>
                 </motion.button>
 
-                <motion.button
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => navigate("/dashboard")}
-                    className="w-full glass p-4 rounded-xl flex items-center gap-3 hover:bg-white/5 transition-colors border border-primary/20"
-                >
-                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-                        <Shield className="w-5 h-5" />
-                    </div>
-                    <div className="flex-1 text-left">
-                        <h3 className="font-medium">Panel de Negocio</h3>
-                        <p className="text-xs text-muted-foreground">Gestionar mi negocio</p>
-                    </div>
-                </motion.button>
+                {profile?.role === 'business_owner' ? (
+                    <motion.button
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => navigate("/dashboard")}
+                        className="w-full glass p-4 rounded-xl flex items-center gap-3 hover:bg-white/5 transition-colors border border-primary/20"
+                    >
+                        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                            <Shield className="w-5 h-5" />
+                        </div>
+                        <div className="flex-1 text-left">
+                            <h3 className="font-medium">Panel de Negocio</h3>
+                            <p className="text-xs text-muted-foreground">Gestionar mi negocio</p>
+                        </div>
+                    </motion.button>
+                ) : (
+                    <motion.button
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => navigate("/unete")}
+                        className="w-full glass p-4 rounded-xl flex items-center gap-3 hover:bg-white/5 transition-colors border border-purple-500/20 bg-purple-500/5"
+                    >
+                        <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center text-purple-500">
+                            <Store className="w-5 h-5" />
+                        </div>
+                        <div className="flex-1 text-left">
+                            <h3 className="font-medium text-purple-400">Registra tu Negocio</h3>
+                            <p className="text-xs text-muted-foreground">¡Haz crecer tus ventas hoy!</p>
+                        </div>
+                    </motion.button>
+                )}
             </div>
 
             <Button

@@ -1,19 +1,65 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { BarChart3, Store, Tag, Settings, LogOut } from "lucide-react";
 import { Button } from "../components/ui/Button";
 import { StatsCard } from "../components/dashboard/StatsCard";
 import { PromoManager } from "../components/dashboard/PromoManager";
+import { BusinessImageManager } from "../components/dashboard/BusinessImageManager";
 import { supabase } from "../lib/supabase";
 
 export default function DashboardPage() {
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState("overview");
+    const [loading, setLoading] = useState(true);
+    const [business, setBusiness] = useState<any>(null);
 
     const handleLogout = async () => {
         await supabase.auth.signOut();
         navigate("/login");
     };
+
+    useEffect(() => {
+        const checkUser = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+
+            if (!user) {
+                navigate("/login");
+                return;
+            }
+
+            const { data: profile } = await supabase
+                .from("profiles")
+                .select("role")
+                .eq("id", user.id)
+                .single();
+
+            if ((profile as any)?.role !== 'business_owner') {
+                navigate("/profile");
+                return;
+            }
+
+            const { data: businessData } = await supabase
+                .from("businesses")
+                .select("*")
+                .eq("owner_id", user.id)
+                .single();
+
+            if (businessData) {
+                setBusiness(businessData);
+            }
+            setLoading(false);
+        };
+
+        checkUser();
+    }, [navigate]);
+
+    if (loading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-background pb-20">
@@ -38,8 +84,8 @@ export default function DashboardPage() {
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
                             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === tab.id
-                                    ? "bg-background shadow-sm text-foreground"
-                                    : "text-muted-foreground hover:text-foreground"
+                                ? "bg-background shadow-sm text-foreground"
+                                : "text-muted-foreground hover:text-foreground"
                                 }`}
                         >
                             <tab.icon className="w-4 h-4" />
@@ -60,6 +106,7 @@ export default function DashboardPage() {
                                 icon={Store}
                                 trend="12%"
                                 trendUp={true}
+                                planId={business?.plan_id || 'free'}
                             />
                             <StatsCard
                                 title="Promos Canjeadas"
@@ -67,6 +114,7 @@ export default function DashboardPage() {
                                 icon={Tag}
                                 trend="5%"
                                 trendUp={true}
+                                planId={business?.plan_id || 'free'}
                             />
                             <StatsCard
                                 title="Clics en Mapa"
@@ -74,6 +122,7 @@ export default function DashboardPage() {
                                 icon={BarChart3}
                                 trend="2%"
                                 trendUp={false}
+                                planId={business?.plan_id || 'free'}
                             />
                         </div>
 
@@ -97,18 +146,33 @@ export default function DashboardPage() {
                 )}
 
                 {activeTab === "business" && (
-                    <div className="glass-card p-6 rounded-xl text-center py-12">
-                        <Store className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                        <h3 className="font-bold text-lg">Editar Perfil</h3>
-                        <p className="text-muted-foreground text-sm mb-6">
-                            Aquí podrás editar la información de tu negocio, horarios y fotos.
-                        </p>
-                        <Button variant="secondary">Próximamente</Button>
+                    <div className="space-y-6">
+                        <div className="glass-card p-6 rounded-xl">
+                            <h3 className="font-bold text-lg mb-2">Perfil de Negocio</h3>
+                            <p className="text-sm text-muted-foreground mb-6">
+                                Personaliza la imagen de tu negocio para atraer más clientes
+                            </p>
+
+                            <BusinessImageManager />
+                        </div>
+
+                        <div className="glass-card p-6 rounded-xl">
+                            <h3 className="font-bold text-lg mb-2">Información del Negocio</h3>
+                            <p className="text-sm text-muted-foreground mb-4">
+                                Nombre: <span className="text-foreground font-medium">Mi Negocio</span>
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                                Edición de nombre, horarios y contacto próximamente.
+                            </p>
+                        </div>
                     </div>
                 )}
 
                 {activeTab === "promos" && (
-                    <PromoManager />
+                    <PromoManager
+                        planId={business?.plan_id || 'free'}
+                        businessName={business?.name}
+                    />
                 )}
 
                 {activeTab === "settings" && (

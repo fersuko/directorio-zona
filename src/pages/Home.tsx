@@ -1,14 +1,18 @@
+import { MapContainer, TileLayer } from "react-leaflet";
+import "leaflet/dist/leaflet.css";
 import { Button } from "../components/ui/Button";
 import { motion } from "framer-motion";
-import businessesData from "../data/businesses.json";
 import type { Business } from "../types";
-import { MapPin, Star } from "lucide-react";
+import { MapPin, Star, Heart } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-
-const businesses = businessesData as Business[];
+import { Logo } from "../components/ui/Logo";
+import { getBusinessImage } from "../lib/businessImages";
+import { useBusinesses } from "../hooks/useBusinesses";
 
 export default function Home() {
     const navigate = useNavigate();
+    const { businesses } = useBusinesses();
+
     const premiumBusinesses = businesses.filter(b => b.isPremium);
     const regularBusinesses = businesses.filter(b => !b.isPremium);
 
@@ -18,19 +22,35 @@ export default function Home() {
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="glass-card rounded-2xl p-6 text-center space-y-4 relative overflow-hidden"
+                className="glass-card rounded-2xl p-6 text-center space-y-4 relative overflow-hidden min-h-[200px] flex flex-col justify-center items-center"
             >
-                <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-purple-500/10 z-0" />
-                <div className="relative z-10 space-y-4">
-                    <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-blue-400 bg-clip-text text-transparent leading-tight">
-                        Directorio Zona
-                    </h1>
-                    <p className="text-muted-foreground text-sm">
-                        Tu directorio comercial del centro de Monterrey
+                {/* Map Background Overlay */}
+                {/* Map Background Overlay - Monterrey Center */}
+                <div className="absolute inset-0 z-0 opacity-40 pointer-events-none grayscale contrast-125">
+                    <MapContainer
+                        center={[25.6667, -100.3167]}
+                        zoom={14}
+                        zoomControl={false}
+                        scrollWheelZoom={false}
+                        dragging={false}
+                        doubleClickZoom={false}
+                        attributionControl={false}
+                        className="w-full h-full"
+                    >
+                        <TileLayer
+                            url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+                        />
+                    </MapContainer>
+                </div>
+
+                <div className="relative z-10 space-y-4 flex flex-col items-center">
+                    <Logo className="scale-125 mb-2" />
+                    <p className="text-muted-foreground text-sm max-w-[250px]">
+                        Tu guía comercial del centro de Monterrey
                     </p>
                     <Button
                         variant="premium"
-                        className="w-full shadow-lg shadow-yellow-500/20"
+                        className="w-full shadow-lg shadow-brand-red/20 bg-brand-red hover:bg-brand-red/90 text-white border-none"
                         onClick={() => navigate("/promos")}
                     >
                         Explorar Ofertas
@@ -38,25 +58,48 @@ export default function Home() {
                 </div>
             </motion.div>
 
-            {/* Categories */}
+            {/* Popular Categories (Dynamic) */}
             <section>
-                <h2 className="text-lg font-semibold mb-4 px-1">Categorías</h2>
-                <div className="grid grid-cols-4 gap-3">
-                    {["Comida", "Tiendas", "Salud", "Servicios"].map((cat, i) => (
-                        <motion.div
-                            key={cat}
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            transition={{ delay: i * 0.05 }}
-                            onClick={() => navigate(`/search?category=${cat}`)}
-                            className="flex flex-col items-center gap-2 cursor-pointer group"
-                        >
-                            <div className="w-14 h-14 rounded-2xl bg-card border border-border flex items-center justify-center text-primary group-hover:scale-105 transition-transform shadow-sm">
-                                <span className="text-xl font-bold">{cat[0]}</span>
-                            </div>
-                            <span className="text-[10px] font-medium text-muted-foreground">{cat}</span>
-                        </motion.div>
-                    ))}
+                <h2 className="text-lg font-semibold mb-4 px-1">Categorías Populares</h2>
+                <div className="flex gap-3 overflow-x-auto pb-4 -mx-4 px-4 scrollbar-hide">
+                    {Object.entries(
+                        businesses.reduce((acc: Record<string, number>, b: Business) => {
+                            acc[b.category] = (acc[b.category] || 0) + 1;
+                            return acc;
+                        }, {} as Record<string, number>)
+                    )
+                        .sort(([, a], [, b]) => b - a)
+                        .slice(0, 10)
+                        .map(([category, count], i) => (
+                            <motion.div
+                                key={category}
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{ delay: i * 0.05 }}
+                                onClick={() => navigate(`/search?category=${encodeURIComponent(category)}`)}
+                                className="flex flex-col items-center gap-2 cursor-pointer group min-w-[70px]"
+                            >
+                                <div className="w-14 h-14 rounded-2xl bg-card border border-border flex items-center justify-center text-xl group-hover:scale-105 transition-transform shadow-sm relative">
+                                    <span className="text-2xl">
+                                        {category === 'Restaurante' ? '🍽️' :
+                                            category === 'Cafetería' ? '☕' :
+                                                category === 'Gimnasio' ? '💪' :
+                                                    category === 'Ferretería' ? '🔧' :
+                                                        category === 'Bar' ? '🍻' :
+                                                            category === 'Ropa' ? '👕' :
+                                                                category === 'Estética/Barbería' ? '💇' :
+                                                                    category === 'Tienda de Abarrotes' ? '🏪' :
+                                                                        '🏪'}
+                                    </span>
+                                    <div className="absolute -top-1 -right-1 bg-primary text-[10px] text-primary-foreground w-5 h-5 rounded-full flex items-center justify-center font-bold border border-background">
+                                        {count}
+                                    </div>
+                                </div>
+                                <span className="text-[10px] font-medium text-muted-foreground text-center leading-tight max-w-[70px] truncate">
+                                    {category}
+                                </span>
+                            </motion.div>
+                        ))}
                 </div>
             </section>
 
@@ -68,17 +111,11 @@ export default function Home() {
                         <h2 className="text-lg font-semibold">Destacados</h2>
                     </div>
 
-                    {/* 
-                        Touch-friendly carousel: 
-                        - Native overflow-x-auto for perfect touch feel
-                        - Snap-x for premium stopping power
-                        - Hidden scrollbar for aesthetics
-                    */}
                     <div
                         className="flex gap-4 overflow-x-auto pb-4 -mx-4 px-4 scrollbar-hide snap-x snap-mandatory"
                         style={{ scrollBehavior: 'smooth' }}
                     >
-                        {premiumBusinesses.map((business) => (
+                        {premiumBusinesses.map((business: Business) => (
                             <div
                                 key={business.id}
                                 onClick={() => navigate(`/business/${business.id}`)}
@@ -86,7 +123,7 @@ export default function Home() {
                             >
                                 <div className="h-32 bg-muted relative">
                                     <img
-                                        src={business.image || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&q=80"}
+                                        src={getBusinessImage(business)}
                                         alt={business.name}
                                         className="w-full h-full object-cover"
                                     />
@@ -108,30 +145,62 @@ export default function Home() {
                 </section>
             )}
 
-            {/* All Businesses List */}
+            {/* Best Rated Businesses */}
             <section>
-                <h2 className="text-lg font-semibold mb-4 px-1">Todos los Negocios</h2>
+                <div className="flex items-center gap-2 px-1 mb-4">
+                    <Heart className="w-5 h-5 text-red-500 fill-red-500" />
+                    <h2 className="text-lg font-semibold">Mejor Calificados</h2>
+                </div>
                 <div className="space-y-3">
-                    {regularBusinesses.slice(0, 10).map((business, i) => (
-                        <motion.div
-                            key={business.id}
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: i * 0.05 }}
-                            className="glass p-3 rounded-xl flex gap-4 items-center hover:bg-white/5 transition-colors"
-                        >
-                            <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center text-muted-foreground font-bold text-lg shrink-0">
-                                {business.name[0]}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <h3 className="font-medium truncate">{business.name}</h3>
-                                <p className="text-xs text-muted-foreground truncate">{business.category}</p>
-                            </div>
-                            <Button size="sm" variant="ghost" className="h-8 w-8 p-0 rounded-full">
-                                <MapPin className="w-4 h-4" />
-                            </Button>
-                        </motion.div>
-                    ))}
+                    {regularBusinesses
+                        .map((b: Business) => ({ ...b, rating: 4 + Math.random() })) // Mock ratings for now
+                        .sort((a: any, b: any) => b.rating - a.rating)
+                        .slice(0, 5)
+                        .map((business: any, i: number) => (
+                            <motion.div
+                                key={business.id}
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: i * 0.05 }}
+                                onClick={() => navigate(`/business/${business.id}`)}
+                                className="glass p-3 rounded-xl flex gap-4 items-center hover:bg-white/5 transition-colors cursor-pointer"
+                            >
+                                <div className="w-12 h-12 rounded-lg bg-muted overflow-hidden shrink-0">
+                                    <img
+                                        src={getBusinessImage(business)}
+                                        alt={business.name}
+                                        className="w-full h-full object-cover"
+                                    />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex justify-between items-start">
+                                        <h3 className="font-medium truncate">{business.name}</h3>
+                                        <div className="flex items-center gap-1 bg-yellow-500/10 px-1.5 py-0.5 rounded text-[10px] text-yellow-500 font-bold">
+                                            <Star className="w-3 h-3 fill-yellow-500" />
+                                            {business.rating ? business.rating.toFixed(1) : "N/A"}
+                                        </div>
+                                    </div>
+                                    <p className="text-xs text-muted-foreground truncate">{business.category}</p>
+                                </div>
+                            </motion.div>
+                        ))}
+                </div>
+            </section>
+
+            {/* Join CTA */}
+            <section className="pt-4">
+                <div className="glass-card p-6 rounded-2xl text-center space-y-4 relative overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-purple-500/10 pointer-events-none" />
+                    <h2 className="text-xl font-bold relative z-10">¿Tienes un negocio?</h2>
+                    <p className="text-sm text-muted-foreground relative z-10">
+                        Únete al directorio digital más exclusivo de Monterrey y llega a más clientes.
+                    </p>
+                    <Button
+                        onClick={() => navigate("/unete")}
+                        className="w-full bg-gradient-to-r from-primary to-purple-600 text-white shadow-lg relative z-10"
+                    >
+                        Registrar mi Negocio
+                    </Button>
                 </div>
             </section>
         </div>

@@ -1,10 +1,29 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ArrowLeft, MapPin, Phone, Share2, Heart, Navigation, Star, Clock } from "lucide-react";
 import { Button } from "../components/ui/Button";
 import { UnlockPromoModal } from "../components/ui/UnlockPromoModal";
+import { ReviewModal } from "../components/ui/ReviewModal";
 import businessesData from "../data/businesses.json";
 import type { Business } from "../types";
+import { getBusinessImage } from "../lib/businessImages";
+import { MapContainer, TileLayer, Marker, Polyline } from "react-leaflet";
+import { useGeolocation } from "../hooks/useGeolocation";
+import { supabase } from "../lib/supabase";
+import L from "leaflet";
+
+// Fix for default marker icon
+import icon from 'leaflet/dist/images/marker-icon.png';
+import iconShadow from 'leaflet/dist/images/marker-shadow.png';
+
+let DefaultIcon = L.icon({
+    iconUrl: icon,
+    shadowUrl: iconShadow,
+    iconSize: [25, 41],
+    iconAnchor: [12, 41]
+});
+
+L.Marker.prototype.options.icon = DefaultIcon;
 
 const businesses = businessesData as Business[];
 
@@ -12,7 +31,68 @@ export default function BusinessDetailPage() {
     const { id } = useParams();
     const navigate = useNavigate();
     const [showPromoModal, setShowPromoModal] = useState(false);
+    const [showReviewModal, setShowReviewModal] = useState(false);
     const business = businesses.find((b) => b.id.toString() === id);
+
+    const [reviews, setReviews] = useState<any[]>([]);
+    const [loadingReviews, setLoadingReviews] = useState(true);
+
+    // Fetch reviews
+    useEffect(() => {
+        if (business?.id) {
+            const fetchReviews = async () => {
+                if (!business?.id) return;
+                const { data } = await supabase
+                    .from('reviews')
+                    .select('*, profiles(full_name)')
+                    .eq('business_id', business.id)
+                    .order('created_at', { ascending: false });
+
+                if (data) {
+                    setReviews(data);
+                }
+                setLoadingReviews(false);
+            };
+            fetchReviews();
+        }
+    }, [business?.id]);
+
+    const handleSubmitReview = async (rating: number, comment: string) => {
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) {
+                alert("Debes iniciar sesión para dejar una reseña");
+                navigate("/login");
+                return;
+            }
+
+            const { error } = await supabase
+                .from('reviews')
+                .insert({
+                    business_id: business?.id,
+                    user_id: user.id,
+                    rating,
+                    comment
+                } as any);
+
+            if (error) throw error;
+
+            // Refresh reviews
+            if (business?.id) {
+                const { data } = await supabase
+                    .from('reviews')
+                    .select('*, profiles(full_name)')
+                    .eq('business_id', business.id)
+                    .order('created_at', { ascending: false });
+
+                if (data) setReviews(data);
+            }
+
+        } catch (error) {
+            console.error("Error submitting review:", error);
+            alert("Error al enviar la reseña");
+        }
+    };
 
     if (!business) {
         return (
@@ -27,25 +107,27 @@ export default function BusinessDetailPage() {
 
     return (
         <div className="pb-24 bg-background min-h-screen relative">
-            {/* Hero Image */}
-            <div className="h-64 w-full relative">
+            {/* Hero Section */}
+            <div className="h-64 w-full relative overflow-hidden">
                 <img
-                    src={business.image || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&q=80"}
+                    src={getBusinessImage(business)}
                     alt={business.name}
                     className="w-full h-full object-cover"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-background to-transparent" />
+
+                {/* Gradient Overlay */}
+                <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
 
                 {/* Back Button */}
                 <button
                     onClick={() => navigate(-1)}
-                    className="absolute top-4 left-4 w-10 h-10 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white hover:bg-black/60 transition-colors"
+                    className="absolute top-4 left-4 w-10 h-10 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white hover:bg-black/60 transition-colors z-20"
                 >
                     <ArrowLeft className="w-6 h-6" />
                 </button>
 
                 {/* Favorite Button */}
-                <button className="absolute top-4 right-4 w-10 h-10 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white hover:bg-black/60 transition-colors">
+                <button className="absolute top-4 right-4 w-10 h-10 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white hover:bg-black/60 transition-colors z-20">
                     <Heart className="w-6 h-6" />
                 </button>
             </div>
@@ -115,21 +197,88 @@ export default function BusinessDetailPage() {
                     </div>
                 )}
 
-                {/* Map Preview (Placeholder for now, could be a mini Leaflet map) */}
+                {/* Map Section */}
                 <div className="space-y-2">
                     <h2 className="font-semibold text-lg">Ubicación</h2>
-                    <div className="h-40 w-full rounded-xl bg-muted overflow-hidden relative">
-                        <img
-                            src="https://images.unsplash.com/photo-1524661135-423995f22d0b?w=800&q=80"
-                            alt="Map Preview"
-                            className="w-full h-full object-cover opacity-50"
-                        />
-                        <div className="absolute inset-0 flex items-center justify-center">
-                            <Button variant="secondary" size="sm" className="gap-2">
-                                <MapPin className="w-4 h-4" />
-                                Ver en Mapa
+                    <div className="h-48 w-full rounded-xl overflow-hidden relative z-0 border border-white/10">
+                        {business.lat && business.lng ? (
+                            <MapContainer
+                                center={[business.lat, business.lng]}
+                                zoom={15}
+                                className="w-full h-full"
+                                zoomControl={false}
+                                dragging={false} // Keep it static-ish to avoid scrolling issues
+                                scrollWheelZoom={false}
+                            >
+                                <TileLayer
+                                    url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+                                />
+                                <Marker position={[business.lat, business.lng]} />
+
+                                {/* Show route line if user location is available */}
+                                <UserRoute businessLat={business.lat} businessLng={business.lng} />
+                            </MapContainer>
+                        ) : (
+                            <div className="w-full h-full bg-muted flex items-center justify-center text-muted-foreground">
+                                Mapa no disponible
+                            </div>
+                        )}
+
+                        <div className="absolute bottom-2 right-2 z-[400]">
+                            <Button
+                                size="sm"
+                                className="gap-2 shadow-lg"
+                                onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&destination=${business.lat},${business.lng}`, '_blank')}
+                            >
+                                <Navigation className="w-3 h-3" />
+                                Abrir GPS
                             </Button>
                         </div>
+                    </div>
+                </div>
+                {/* Reviews Section */}
+                <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                        <h2 className="font-semibold text-lg">Reseñas y Opiniones</h2>
+                        <Button variant="ghost" size="sm" onClick={() => setShowReviewModal(true)} className="text-primary">
+                            Escribir reseña
+                        </Button>
+                    </div>
+
+                    {/* Real Reviews List */}
+                    <div className="space-y-4">
+                        {loadingReviews ? (
+                            <p className="text-sm text-muted-foreground text-center py-4">Cargando reseñas...</p>
+                        ) : reviews.length === 0 ? (
+                            <p className="text-sm text-muted-foreground text-center py-4">Sé el primero en opinar sobre este lugar.</p>
+                        ) : (
+                            reviews.map((review) => (
+                                <div key={review.id} className="glass-card p-4 rounded-xl space-y-2">
+                                    <div className="flex justify-between items-start">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-xs">
+                                                {(review.profiles?.full_name || "Usuario")[0]}
+                                            </div>
+                                            <div>
+                                                <p className="font-medium text-sm">{review.profiles?.full_name || "Usuario"}</p>
+                                                <div className="flex items-center gap-0.5">
+                                                    {[...Array(5)].map((_, i) => (
+                                                        <Star
+                                                            key={i}
+                                                            className={`w-3 h-3 ${i < review.rating ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground/30"}`}
+                                                        />
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <span className="text-xs text-muted-foreground">
+                                            {new Date(review.created_at).toLocaleDateString()}
+                                        </span>
+                                    </div>
+                                    <p className="text-sm text-muted-foreground">{review.comment}</p>
+                                </div>
+                            ))
+                        )}
                     </div>
                 </div>
             </div>
@@ -139,6 +288,33 @@ export default function BusinessDetailPage() {
                 onClose={() => setShowPromoModal(false)}
                 businessName={business.name}
             />
+
+            <ReviewModal
+                isOpen={showReviewModal}
+                onClose={() => setShowReviewModal(false)}
+                businessName={business.name}
+                onSubmit={handleSubmitReview}
+            />
         </div>
+    );
+}
+
+// Helper component to render the route line
+function UserRoute({ businessLat, businessLng }: { businessLat: number, businessLng: number }) {
+    const { coordinates } = useGeolocation();
+
+    if (!coordinates) return null;
+
+    return (
+        <>
+            <Marker position={[coordinates.lat, coordinates.lng]} icon={DefaultIcon} opacity={0.7} />
+            <Polyline
+                positions={[
+                    [coordinates.lat, coordinates.lng],
+                    [businessLat, businessLng]
+                ]}
+                pathOptions={{ color: 'blue', dashArray: '5, 10', weight: 4, opacity: 0.6 }}
+            />
+        </>
     );
 }

@@ -10,7 +10,12 @@ interface Promo {
     expiresAt: string;
 }
 
-export function PromoManager() {
+interface PromoManagerProps {
+    planId: 'free' | 'launch' | 'featured';
+    businessName?: string;
+}
+
+export function PromoManager({ planId, businessName }: PromoManagerProps) {
     const [promos, setPromos] = useState<Promo[]>([
         {
             id: 1,
@@ -42,15 +47,44 @@ export function PromoManager() {
         setIsCreating(false);
     };
 
+    const handleUpgrade = () => {
+        const message = `Hola, quiero mejorar mi plan para el negocio "${businessName || 'Mi Negocio'}" a Premium.`;
+        const url = `https://wa.me/528112345678?text=${encodeURIComponent(message)}`;
+        window.open(url, '_blank');
+    };
+
+    const canCreatePromos = planId !== 'free';
+
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
                 <h3 className="font-bold text-lg">Mis Promociones</h3>
-                <Button onClick={() => setIsCreating(true)} size="sm" className="gap-2">
-                    <Plus className="w-4 h-4" />
-                    Nueva Promo
-                </Button>
+                {canCreatePromos ? (
+                    <Button onClick={() => setIsCreating(true)} size="sm" className="gap-2">
+                        <Plus className="w-4 h-4" />
+                        Nueva Promo
+                    </Button>
+                ) : (
+                    <div className="px-3 py-1 bg-yellow-500/10 text-yellow-500 text-xs font-bold rounded-full border border-yellow-500/20">
+                        Plan Gratuito
+                    </div>
+                )}
             </div>
+
+            {!canCreatePromos && (
+                <div className="glass-card p-6 rounded-xl border border-yellow-500/20 bg-yellow-500/5 text-center space-y-3">
+                    <div className="w-12 h-12 bg-yellow-500/10 rounded-full flex items-center justify-center mx-auto text-yellow-500">
+                        <Tag className="w-6 h-6" />
+                    </div>
+                    <h4 className="font-bold">Desbloquea las Promociones</h4>
+                    <p className="text-sm text-muted-foreground">
+                        Mejora tu plan para crear ofertas irresistibles y atraer más clientes.
+                    </p>
+                    <Button variant="premium" size="sm" className="w-full max-w-xs" onClick={handleUpgrade}>
+                        Mejorar Plan
+                    </Button>
+                </div>
+            )}
 
             {isCreating && (
                 <div className="glass-card p-4 rounded-xl space-y-4 border border-primary/20">

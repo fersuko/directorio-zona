@@ -1,38 +1,53 @@
-import { useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useMemo, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Search, MapPin, Star, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import businessesData from "../data/businesses.json";
-import type { Business } from "../types";
-
-const businesses = businessesData as Business[];
-
-const CATEGORIES = [
-    "Todos",
-    "Restaurante",
-    "Cafetería",
-    "Bar",
-    "Tienda de Conveniencia",
-    "Banco",
-    "Farmacia",
-    "Ropa",
-    "Comida Rápida"
-];
+import { useBusinesses } from "../hooks/useBusinesses";
+import { getBusinessImage } from "../lib/businessImages";
 
 export default function SearchPage() {
     const navigate = useNavigate();
+    const [searchParams, setSearchParams] = useSearchParams();
+    const { businesses } = useBusinesses();
+
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedCategory, setSelectedCategory] = useState("Todos");
+
+    // Get unique categories and sort them dynamically based on current businesses
+    const categories = useMemo(() => {
+        return ["Todos", ...Array.from(new Set(businesses.map(b => b.category))).sort()];
+    }, [businesses]);
+
+    useEffect(() => {
+        const categoryParam = searchParams.get("category");
+        if (categoryParam && categories.includes(categoryParam)) {
+            setSelectedCategory(categoryParam);
+        } else {
+            setSelectedCategory("Todos");
+        }
+    }, [searchParams, categories]);
+
+    const handleCategorySelect = (category: string) => {
+        setSelectedCategory(category);
+        if (category === "Todos") {
+            searchParams.delete("category");
+        } else {
+            searchParams.set("category", category);
+        }
+        setSearchParams(searchParams);
+    };
 
     const filteredBusinesses = useMemo(() => {
         return businesses.filter((business) => {
             const matchesSearch = business.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                business.description?.toLowerCase().includes(searchTerm.toLowerCase());
+                business.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                business.category.toLowerCase().includes(searchTerm.toLowerCase());
+
             const matchesCategory = selectedCategory === "Todos" || business.category === selectedCategory;
 
             return matchesSearch && matchesCategory;
         }).sort((a, b) => (b.isPremium === a.isPremium ? 0 : b.isPremium ? 1 : -1));
-    }, [searchTerm, selectedCategory]);
+    }, [businesses, searchTerm, selectedCategory]);
 
     return (
         <div className="p-4 pb-24 min-h-screen bg-background space-y-4">
@@ -60,16 +75,16 @@ export default function SearchPage() {
 
                 {/* Category Chips */}
                 <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide -mx-4 px-4">
-                    {CATEGORIES.map((cat) => (
+                    {categories.map((category) => (
                         <button
-                            key={cat}
-                            onClick={() => setSelectedCategory(cat)}
-                            className={`whitespace-nowrap px-4 py-1.5 rounded-full text-xs font-medium transition-colors ${selectedCategory === cat
-                                    ? "bg-primary text-white shadow-lg shadow-primary/25"
-                                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                            key={category}
+                            onClick={() => handleCategorySelect(category)}
+                            className={`whitespace-nowrap px-4 py-1.5 rounded-full text-xs font-medium transition-colors ${selectedCategory === category
+                                ? "bg-primary text-white shadow-lg shadow-primary/25"
+                                : "bg-muted text-muted-foreground hover:bg-muted/80"
                                 }`}
                         >
-                            {cat}
+                            {category}
                         </button>
                     ))}
                 </div>
@@ -96,7 +111,7 @@ export default function SearchPage() {
                             {/* Thumbnail */}
                             <div className="w-20 h-20 rounded-lg bg-muted overflow-hidden flex-shrink-0 relative">
                                 <img
-                                    src={business.image || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&q=80"}
+                                    src={getBusinessImage(business)}
                                     alt={business.name}
                                     className="w-full h-full object-cover"
                                 />
@@ -133,7 +148,7 @@ export default function SearchPage() {
                     <div className="text-center py-10 text-muted-foreground">
                         <p>No se encontraron resultados para "{searchTerm}"</p>
                         <button
-                            onClick={() => { setSearchTerm(""); setSelectedCategory("Todos"); }}
+                            onClick={() => { setSearchTerm(""); handleCategorySelect("Todos"); }}
                             className="text-primary text-sm mt-2 hover:underline"
                         >
                             Limpiar filtros

@@ -21,6 +21,7 @@ export interface Business {
     image?: string;
     rating?: number;
     reviewCount?: number;
+    isHidden?: boolean; // Controls visibility in app
 }
 
 export interface Promotion {

@@ -48,7 +48,8 @@ export function useBusinesses() {
                         ownerId: dbBiz.owner_id,
                         lat: Number(dbBiz.lat) || staticBiz.lat,
                         lng: Number(dbBiz.lng) || staticBiz.lng,
-                        image: dbBiz.image_url || staticBiz.image
+                        image: dbBiz.image_url || staticBiz.image,
+                        isHidden: dbBiz.is_hidden || false
                     };
                 }
                 // No DB override: Force defaults
@@ -78,13 +79,15 @@ export function useBusinesses() {
                     ownerId: dbBiz.owner_id,
                     image: dbBiz.image_url,
                     rating: Number(dbBiz.rating) || 0,
-                    reviewCount: Number(dbBiz.review_count) || 0
+                    reviewCount: Number(dbBiz.review_count) || 0,
+                    isHidden: dbBiz.is_hidden || false
                 } as Business;
             });
 
-            allBusinesses = [...allBusinesses, ...newBusinesses];
+            // Filter out hidden businesses for public view
+            const visibleBusinesses = [...allBusinesses, ...newBusinesses].filter(b => !b.isHidden);
 
-            setBusinesses(allBusinesses);
+            setBusinesses(visibleBusinesses);
         } catch (err) {
             console.error("Error in useBusinesses:", err);
         } finally {

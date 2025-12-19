@@ -1,10 +1,15 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Shield, LogOut } from "lucide-react";
+import { Shield, LogOut, Users, Search, Store, Star, MousePointerClick } from "lucide-react";
 import { Button } from "../components/ui/Button";
+import { Input } from "../components/ui/Input";
 import { AdminBusinessTable } from "../components/admin/AdminBusinessTable";
 import { LeadsTable } from "../components/admin/LeadsTable";
 import { AddBusinessForm } from "../components/admin/AddBusinessForm";
+import { UserTable } from "../components/admin/UserTable";
+import { StatsCard } from "../components/dashboard/StatsCard";
+import { ConfirmDialog } from "../components/ui/ConfirmDialog";
+import { TransferOwnershipModal } from "../components/admin/TransferOwnershipModal";
 import { supabase } from "../lib/supabase";
 import businessesData from "../data/businesses.json";
 import type { Business } from "../types";
@@ -12,23 +17,39 @@ import type { Business } from "../types";
 export default function AdminDashboard() {
     const navigate = useNavigate();
     const [loading, setLoading] = useState(true);
-    const [businesses, setBusinesses] = useState<Business[]>([]);
     const [accessDenied, setAccessDenied] = useState(false);
-    const [activeTab, setActiveTab] = useState<'businesses' | 'leads' | 'add'>('businesses');
+
+    // Data State
+    const [businesses, setBusinesses] = useState<Business[]>([]);
+    const [users, setUsers] = useState<any[]>([]);
+    const [stats, setStats] = useState({
+        scannedBusinesses: 0,
+        totalLeads: 0,
+        totalReviews: 0,
+        totalUsers: 0
+    });
+
+    // UI State
+    const [activeTab, setActiveTab] = useState<'businesses' | 'leads' | 'users' | 'add'>('businesses');
     const [leadToConvert, setLeadToConvert] = useState<any>(null);
+    const [editingBusiness, setEditingBusiness] = useState<Business | null>(null);
+    const [transferData, setTransferData] = useState<{ isOpen: boolean; businessId?: number; businessName?: string }>({ isOpen: false });
+    const [deleteConfirm, setDeleteConfirm] = useState<{ type: 'business' | 'user' | 'lead'; id: any; name: string } | null>(null);
+
+    // Filters State
+    const [searchTerm, setSearchTerm] = useState("");
+    const [filterPlan, setFilterPlan] = useState<'all' | 'free' | 'launch' | 'featured'>('all');
+    const [filterStatus, setFilterStatus] = useState<'all' | 'published' | 'hidden'>('all');
 
     useEffect(() => {
         checkAdminAndFetchData();
     }, []);
 
     const checkAdminAndFetchData = async () => {
-        console.log("Checking admin access...");
         try {
             const { data: { user } } = await supabase.auth.getUser();
-            console.log("User:", user?.id);
 
             if (!user) {
-                console.log("No user, redirecting to admin login");
                 navigate("/admin/login");
                 return;
             }
@@ -40,16 +61,18 @@ export default function AdminDashboard() {
                 .eq("id", user.id)
                 .single();
 
-            console.log("Profile:", profile, "Error:", profileError);
-
             if (profileError || (profile as any)?.role !== 'admin') {
-                console.log("Not admin, access denied");
                 setAccessDenied(true);
                 setLoading(false);
                 return;
             }
 
-            await fetchBusinesses();
+            await Promise.all([
+                fetchBusinesses(),
+                fetchStats(),
+                fetchUsers()
+            ]);
+
             setLoading(false);
         } catch (err) {
             console.error("Unexpected error in AdminDashboard:", err);
@@ -58,8 +81,40 @@ export default function AdminDashboard() {
         }
     };
 
+    const fetchStats = async () => {
+        try {
+            // Get counts
+            const leadsCount = await supabase.from("leads").select('*', { count: 'exact', head: true });
+            const reviewsCount = await supabase.from("reviews").select('*', { count: 'exact', head: true });
+            const usersCount = await supabase.from("profiles").select('*', { count: 'exact', head: true });
+
+            setStats(prev => ({
+                ...prev,
+                totalLeads: leadsCount.count || 0,
+                totalReviews: reviewsCount.count || 0,
+                totalUsers: usersCount.count || 0
+            }));
+        } catch (err) {
+            console.error("Error fetching stats:", err);
+        }
+    };
+
+    const fetchUsers = async () => {
+        try {
+            const { data, error } = await supabase
+                .from("profiles")
+                .select("*")
+                .order('created_at', { ascending: false });
+
+            if (!error && data) {
+                setUsers(data);
+            }
+        } catch (err) {
+            console.error("Error fetching users:", err);
+        }
+    };
+
     const fetchBusinesses = async () => {
-        // Fetch ALL businesses from Supabase
         const { data: dbBusinesses, error } = await supabase
             .from("businesses")
             .select("*");
@@ -75,22 +130,18 @@ export default function AdminDashboard() {
         let allBusinesses = (businessesData as Business[]).map(staticBiz => {
             const dbBiz = dbMap.get(staticBiz.id);
             if (dbBiz) {
-                // Found in DB, apply overrides
                 const planId = dbBiz.plan_id || 'free';
                 const isPremiumPlan = planId === 'launch' || planId === 'featured';
-
-                // Remove from map so we know it's processed
                 dbMap.delete(staticBiz.id);
 
                 return {
                     ...staticBiz,
-                    ...dbBiz, // Apply all DB fields (name, owner_id, etc)
+                    ...dbBiz,
                     isPremium: isPremiumPlan || dbBiz.is_premium || false,
                     planId: planId,
                     ownerId: dbBiz.owner_id,
                 };
             }
-            // No DB override
             return {
                 ...staticBiz,
                 planId: 'free' as 'free' | 'launch' | 'featured',
@@ -98,7 +149,7 @@ export default function AdminDashboard() {
             };
         });
 
-        // 2. Add remaining DB businesses (New ones)
+        // 2. Add remaining DB businesses
         const newBusinesses = Array.from(dbMap.values()).map((dbBiz: any) => {
             const planId = dbBiz.plan_id || 'free';
             const isPremiumPlan = planId === 'launch' || planId === 'featured';
@@ -114,18 +165,19 @@ export default function AdminDashboard() {
                 isPremium: isPremiumPlan || dbBiz.is_premium || false,
                 planId: planId,
                 ownerId: dbBiz.owner_id,
-                image: dbBiz.image_url, // Map DB field to frontend field
-                rating: 0, // Default
-                reviewCount: 0 // Default
+                image: dbBiz.image_url,
+                rating: 0,
+                reviewCount: 0
             } as Business;
         });
 
-        setBusinesses([...allBusinesses, ...newBusinesses]);
+        const total = [...allBusinesses, ...newBusinesses];
+        setBusinesses(total);
+        setStats(prev => ({ ...prev, scannedBusinesses: total.length }));
     };
 
     const handleChangePlan = async (id: number, newPlanId: string) => {
         try {
-            // Upsert to Supabase to override
             const { error } = await supabase
                 .from("businesses")
                 .upsert({
@@ -136,7 +188,6 @@ export default function AdminDashboard() {
 
             if (error) throw error;
 
-            // Update local state
             setBusinesses(prev => prev.map(b => {
                 if (b.id === id) {
                     const isPremiumPlan = newPlanId === 'launch' || newPlanId === 'featured';
@@ -151,64 +202,107 @@ export default function AdminDashboard() {
         }
     };
 
-    const handleAssignOwner = async (id: number) => {
-        const input = window.prompt("Ingrese el Email o UUID del usuario dueño:");
-        if (!input) return;
-
-        let ownerId = input;
-
-        // If input looks like an email, try to find user in profiles
-        if (input.includes('@')) {
-            try {
-                const { data } = await supabase
-                    .from('profiles')
-                    .select('id')
-                    .eq('email', input)
-                    .single();
-
-                if (data) {
-                    ownerId = (data as any).id;
-                } else {
-                    // Fallback: maybe they meant UUID but typed email? 
-                    // Or maybe profile doesn't have email.
-                    // We can't easily lookup auth.users from client.
-                    alert("No se encontró usuario con ese email en perfiles. Intente con el UUID.");
-                    return;
-                }
-            } catch (err) {
-                console.error("Error looking up user by email:", err);
-                // If column doesn't exist, this will fail.
-                alert("Error buscando por email. Por favor use el UUID (Supabase Auth).");
-                return;
-            }
+    const handleAssignOwner = (id: number) => {
+        const business = businesses.find(b => b.id === id);
+        if (business) {
+            setTransferData({ isOpen: true, businessId: id, businessName: business.name });
         }
+    };
+
+    const confirmTransfer = async (newOwnerId: string) => {
+        if (!transferData.businessId) return;
 
         try {
             const { error } = await supabase
                 .from("businesses")
                 .upsert({
-                    id,
-                    owner_id: ownerId,
+                    id: transferData.businessId,
+                    owner_id: newOwnerId,
                     updated_at: new Date().toISOString()
                 } as any);
 
             if (error) throw error;
 
-            // Update local state
-            setBusinesses(prev => prev.map(b =>
-                b.id === id ? { ...b, ownerId } : b
-            ));
-            alert("Dueño asignado correctamente");
+            setBusinesses(prev => prev.map(b => b.id === transferData.businessId ? { ...b, ownerId: newOwnerId } : b));
+            setTransferData({ isOpen: false });
+            alert("Transferencia exitosa.");
         } catch (error) {
             console.error("Error assigning owner:", error);
-            alert("Error al asignar dueño. Verifique que el UUID sea válido.");
+            alert("Error al asignar dueño.");
         }
     };
 
     const handleToggleVisibility = async (id: number, currentStatus: boolean) => {
-        // Placeholder for visibility logic
-        console.log("Toggle visibility", id, currentStatus);
-        alert("Funcionalidad de ocultar próximamente");
+        try {
+            const { error } = await supabase
+                .from("businesses")
+                .upsert({ id, is_hidden: !currentStatus, updated_at: new Date().toISOString() } as any);
+
+            if (error) throw error;
+
+            setBusinesses(prev => prev.map(b => b.id === id ? { ...b, isHidden: !currentStatus } : b));
+        } catch (error) {
+            console.error("Error toggling visibility:", error);
+            alert("Error al cambiar visibilidad");
+        }
+    };
+
+    const handleDelete = (id: number, name: string) => setDeleteConfirm({ type: 'business', id, name });
+    const handleDeleteUser = (id: string, name: string) => setDeleteConfirm({ type: 'user', id, name });
+    const handleDeleteLead = (id: string) => setDeleteConfirm({ type: 'lead', id, name: 'Solicitud' });
+
+    const handleUpdateUserRole = async (id: string, newRole: 'admin' | 'user') => {
+        if (!window.confirm(`¿Estás seguro de cambiar el rol a ${newRole}?`)) return;
+
+        try {
+            const { error } = await (supabase
+                .from("profiles") as any)
+                .update({ role: newRole })
+                .eq("id", id);
+
+            if (error) throw error;
+
+            setUsers(prev => prev.map(u => u.id === id ? { ...u, role: newRole } : u));
+        } catch (error) {
+            console.error("Error updating role:", error);
+            alert("Error al actualizar rol");
+        }
+    };
+
+    const confirmDelete = async () => {
+        if (!deleteConfirm) return;
+        const { type, id } = deleteConfirm;
+
+        try {
+            let error;
+
+            if (type === 'business') {
+                const { error: err } = await supabase.from("businesses").delete().eq('id', id);
+                error = err;
+                if (!error) setBusinesses(prev => prev.filter(b => b.id !== id));
+            } else if (type === 'user') {
+                const { error: err } = await supabase.from("profiles").delete().eq('id', id);
+                error = err;
+                if (!error) setUsers(prev => prev.filter(u => u.id !== id));
+            } else if (type === 'lead') {
+                const { error: err } = await supabase.from("leads").delete().eq('id', id);
+                error = err;
+                if (!error) {
+                    window.location.reload();
+                }
+            }
+
+            if (error) throw error;
+            setDeleteConfirm(null);
+        } catch (error) {
+            console.error("Error deleting:", error);
+            alert("Error al eliminar");
+        }
+    };
+
+    const handleEdit = (business: Business) => {
+        setEditingBusiness(business);
+        setActiveTab('add');
     };
 
     const handleLogout = async () => {
@@ -216,12 +310,28 @@ export default function AdminDashboard() {
         navigate("/admin/login");
     };
 
+    const filteredBusinesses = useMemo(() => {
+        return businesses.filter(b => {
+            const matchesSearch = searchTerm === "" ||
+                b.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                b.ownerId?.toLowerCase().includes(searchTerm.toLowerCase());
+
+            const matchesPlan = filterPlan === 'all' || b.planId === filterPlan;
+
+            const matchesStatus = filterStatus === 'all' ||
+                (filterStatus === 'hidden' && b.isHidden) ||
+                (filterStatus === 'published' && !b.isHidden);
+
+            return matchesSearch && matchesPlan && matchesStatus;
+        });
+    }, [businesses, searchTerm, filterPlan, filterStatus]);
+
     if (loading) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
                 <div className="flex flex-col items-center gap-4">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                    <p>Verificando acceso...</p>
+                    <p>Cargando panel...</p>
                 </div>
             </div>
         );
@@ -233,18 +343,7 @@ export default function AdminDashboard() {
                 <Shield className="w-12 h-12 text-red-500" />
                 <h1 className="text-2xl font-bold">Acceso Restringido</h1>
                 <p className="text-muted-foreground">No tienes permisos de administrador.</p>
-                <div className="text-xs text-muted-foreground bg-muted p-4 rounded max-w-md text-left overflow-auto">
-                    <p className="font-bold mb-2">Debug Info:</p>
-                    <p>Asegúrate de que en la tabla 'profiles' de Supabase:</p>
-                    <ul className="list-disc pl-4 space-y-1">
-                        <li>Tu usuario existe (ID coincide con Auth).</li>
-                        <li>La columna 'role' tiene el valor 'admin'.</li>
-                    </ul>
-                </div>
-                <div className="flex gap-4">
-                    <Button onClick={() => window.location.reload()} variant="outline">Reintentar</Button>
-                    <Button onClick={() => navigate("/")}>Volver al Inicio</Button>
-                </div>
+                <Button onClick={() => navigate("/")}>Volver al Inicio</Button>
             </div>
         );
     }
@@ -268,53 +367,114 @@ export default function AdminDashboard() {
                 </Button>
             </div>
 
-            {/* Content */}
             <div className="container mx-auto px-6 py-8 space-y-6">
 
-                {/* Stats / Quick Actions */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="glass-card p-4 rounded-xl flex items-center justify-between">
-                        <div>
-                            <p className="text-sm text-muted-foreground">Total Negocios</p>
-                            <h3 className="text-2xl font-bold">{businesses.length}</h3>
-                        </div>
-                        <div className="p-2 bg-primary/10 rounded-lg text-primary">
-                            <Shield className="w-5 h-5" />
-                        </div>
-                    </div>
+                {/* Stats Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <StatsCard
+                        title="Negocios Totales"
+                        value={stats.scannedBusinesses}
+                        icon={Store}
+                        planId="featured"
+                    />
+                    <StatsCard
+                        title="Solicitudes (Leads)"
+                        value={stats.totalLeads}
+                        icon={MousePointerClick}
+                        planId="featured"
+                    />
+                    <StatsCard
+                        title="Reviews Activas"
+                        value={stats.totalReviews}
+                        icon={Star}
+                        planId="featured"
+                    />
+                    <StatsCard
+                        title="Usuarios Registrados"
+                        value={stats.totalUsers}
+                        icon={Users}
+                        planId="featured"
+                    />
                 </div>
 
                 {/* Tabs */}
                 <div className="flex gap-4 border-b border-white/10 pb-1 overflow-x-auto">
-                    <button
-                        className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeTab === 'businesses' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
-                        onClick={() => setActiveTab('businesses')}
-                    >
-                        Negocios
-                    </button>
-                    <button
-                        className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeTab === 'leads' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
-                        onClick={() => setActiveTab('leads')}
-                    >
-                        Solicitudes (Leads)
-                    </button>
-                    <button
-                        className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeTab === 'add' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
-                        onClick={() => setActiveTab('add')}
-                    >
-                        + Agregar Negocio
-                    </button>
+                    {[
+                        { id: 'businesses', label: 'Negocios' },
+                        { id: 'leads', label: 'Solicitudes' },
+                        { id: 'users', label: 'Usuarios' },
+                        { id: 'add', label: '+ Agregar Negocio' }
+                    ].map(tab => (
+                        <button
+                            key={tab.id}
+                            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeTab === tab.id
+                                ? 'border-primary text-primary'
+                                : 'border-transparent text-muted-foreground hover:text-foreground'
+                                }`}
+                            onClick={() => setActiveTab(tab.id as any)}
+                        >
+                            {tab.label}
+                        </button>
+                    ))}
                 </div>
 
+                {/* Filters Bar (Only for Businesses Tab) */}
+                {activeTab === 'businesses' && (
+                    <div className="flex flex-col md:flex-row gap-4 items-center bg-white/5 p-4 rounded-xl border border-white/10">
+                        <div className="relative w-full md:w-auto md:flex-1">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                            <Input
+                                placeholder="Buscar por nombre o dueño..."
+                                className="pl-9"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
+                        </div>
+
+                        <div className="flex gap-2 w-full md:w-auto overflow-x-auto">
+                            <select
+                                className="bg-background border border-input rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                                value={filterStatus}
+                                onChange={(e) => setFilterStatus(e.target.value as any)}
+                            >
+                                <option value="all">Todos los Estados</option>
+                                <option value="published">Publicados</option>
+                                <option value="hidden">Ocultos</option>
+                            </select>
+
+                            <select
+                                className="bg-background border border-input rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                                value={filterPlan}
+                                onChange={(e) => setFilterPlan(e.target.value as any)}
+                            >
+                                <option value="all">Todos los Planes</option>
+                                <option value="free">Free</option>
+                                <option value="launch">Launch</option>
+                                <option value="featured">Featured</option>
+                            </select>
+                        </div>
+                    </div>
+                )}
+
+                {/* Content Area */}
                 <div className="glass-card p-6 rounded-xl min-h-[500px]">
                     {activeTab === 'businesses' && (
                         <>
-                            <h2 className="text-lg font-semibold mb-6">Gestión de Negocios</h2>
+                            <div className="flex justify-between items-center mb-6">
+                                <h2 className="text-lg font-semibold">
+                                    Gestión de Negocios
+                                    <span className="ml-2 text-sm font-normal text-muted-foreground">
+                                        ({filteredBusinesses.length} resultados)
+                                    </span>
+                                </h2>
+                            </div>
                             <AdminBusinessTable
-                                businesses={businesses}
+                                businesses={filteredBusinesses}
                                 onChangePlan={handleChangePlan}
                                 onToggleVisibility={handleToggleVisibility}
                                 onAssignOwner={handleAssignOwner}
+                                onEdit={handleEdit}
+                                onDelete={handleDelete}
                             />
                         </>
                     )}
@@ -322,39 +482,77 @@ export default function AdminDashboard() {
                     {activeTab === 'leads' && (
                         <>
                             <h2 className="text-lg font-semibold mb-6">Solicitudes de Ingreso</h2>
-                            <LeadsTable onConvert={(lead) => {
-                                setLeadToConvert(lead);
-                                setActiveTab('add');
-                            }} />
+                            <LeadsTable
+                                onConvert={(lead) => {
+                                    setLeadToConvert(lead);
+                                    setActiveTab('add');
+                                }}
+                                onDelete={handleDeleteLead}
+                            />
+                        </>
+                    )}
+
+                    {activeTab === 'users' && (
+                        <>
+                            <h2 className="text-lg font-semibold mb-6">Usuarios Registrados</h2>
+                            <UserTable
+                                users={users}
+                                onDelete={handleDeleteUser}
+                                onUpdateRole={handleUpdateUserRole}
+                            />
                         </>
                     )}
 
                     {activeTab === 'add' && (
                         <>
-                            <h2 className="text-lg font-semibold mb-6">Agregar Nuevo Negocio</h2>
+                            <h2 className="text-lg font-semibold mb-6">
+                                {editingBusiness ? "Editar Negocio" : "Agregar Nuevo Negocio"}
+                            </h2>
                             <AddBusinessForm
-                                initialData={leadToConvert ? {
+                                initialData={editingBusiness || (leadToConvert ? {
                                     name: leadToConvert.business_name,
                                     description: leadToConvert.notes,
-                                    address: '', // Lead doesn't have address usually, or put placeholder
+                                    address: '',
                                     category: '',
-                                    lat: 25.6866, // Default to MTY
+                                    lat: 25.6866,
                                     lng: -100.3161
-                                } : undefined}
+                                } : undefined)}
                                 onSuccess={() => {
                                     setActiveTab('businesses');
                                     setLeadToConvert(null);
-                                    fetchBusinesses(); // Refresh list
+                                    setEditingBusiness(null);
+                                    fetchBusinesses();
                                 }}
                                 onCancel={() => {
                                     setActiveTab('businesses');
                                     setLeadToConvert(null);
+                                    setEditingBusiness(null);
                                 }}
                             />
                         </>
                     )}
                 </div>
             </div>
+
+            <ConfirmDialog
+                isOpen={!!deleteConfirm}
+                onClose={() => setDeleteConfirm(null)}
+                onConfirm={confirmDelete}
+                title={deleteConfirm?.type === 'user' ? "¿Eliminar Usuario?" : "Confirmar Acción"}
+                message={`¿Estás seguro de que deseas eliminar "${deleteConfirm?.name}"? Esta acción no se puede deshacer.`}
+                confirmText="Eliminar"
+                cancelText="Cancelar"
+                cancelText="Cancelar"
+                variant="danger"
+            />
+
+            <TransferOwnershipModal
+                isOpen={transferData.isOpen}
+                onClose={() => setTransferData({ ...transferData, isOpen: false })}
+                onConfirm={confirmTransfer}
+                businessName={transferData.businessName || ""}
+                users={users}
+            />
         </div>
     );
 }

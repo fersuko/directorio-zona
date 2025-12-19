@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../../lib/supabase";
-import { Phone, Mail, Calendar, CheckCircle, XCircle, MessageSquare } from "lucide-react";
+import { Phone, Mail, Calendar, CheckCircle, XCircle, MessageSquare, Trash2 } from "lucide-react";
 import { Button } from "../ui/Button";
 
 export interface Lead {
@@ -16,9 +16,10 @@ export interface Lead {
 
 interface LeadsTableProps {
     onConvert?: (lead: Lead) => void;
+    onDelete?: (id: string) => void;
 }
 
-export function LeadsTable({ onConvert }: LeadsTableProps) {
+export function LeadsTable({ onConvert, onDelete }: LeadsTableProps) {
     const [leads, setLeads] = useState<Lead[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -146,6 +147,15 @@ export function LeadsTable({ onConvert }: LeadsTableProps) {
                                         </Button>
                                     </>
                                 )}
+                                <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="text-muted-foreground hover:text-red-500"
+                                    title="Eliminar Solicitud"
+                                    onClick={() => onDelete && onDelete(lead.id)}
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                </Button>
                             </div>
                         </div>
                     </div>

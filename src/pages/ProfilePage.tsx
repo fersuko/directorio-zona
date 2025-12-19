@@ -1,39 +1,93 @@
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../components/ui/Button";
 import { motion } from "framer-motion";
-import { User, LogOut, Settings, Heart, Shield, Store } from "lucide-react";
-import type { Session } from "@supabase/supabase-js";
+import { User, LogOut, Settings, Heart, Shield, Store, Edit, Save, X, Phone } from "lucide-react";
+import type { User as SupabaseUser } from "@supabase/supabase-js"; // Fix import
 
 export default function ProfilePage() {
-    const [session, setSession] = useState<Session | null>(null);
-    const [profile, setProfile] = useState<any>(null);
+    const [session, setSession] = useState<SupabaseUser | null>(null);
+    const [profile, setProfile] = useState<any>(null); // Keep as any for flexibility or defined interface
     const [loading, setLoading] = useState(true);
+
+    // Edit State
+    const [isEditing, setIsEditing] = useState(false);
+    const [formData, setFormData] = useState({ full_name: "", phone: "" });
+
     const navigate = useNavigate();
 
     useEffect(() => {
-        supabase.auth.getSession().then(({ data: { session } }) => {
-            setSession(session);
-            if (session) fetchProfile(session.user.id);
-            else setLoading(false);
-        });
+        getProfile();
     }, []);
 
-    const fetchProfile = async (userId: string) => {
+    const getProfile = async () => {
         try {
+            setLoading(true);
+            const { data: { user } } = await supabase.auth.getUser();
+
+            if (!user) {
+                navigate("/login");
+                return;
+            }
+
+            setSession(user);
+
             const { data, error } = await supabase
                 .from("profiles")
                 .select("*")
-                .eq("id", userId)
+                .eq("id", user.id)
                 .single();
 
             if (error) throw error;
-            setProfile(data);
-        } catch (error) {
-            console.error("Error fetching profile:", error);
+
+            // Redirect Business Owners to Dashboard
+            if ((data as any)?.role === 'business_owner') {
+                navigate("/dashboard");
+                return;
+            }
+
+            // Redirect Admins to Admin Panel
+            if ((data as any)?.role === 'admin') {
+                navigate("/admin");
+                return;
+            }
+
+            if (data) {
+                setProfile(data);
+                setFormData({
+                    full_name: data.full_name || "",
+                    phone: data.phone || ""
+                });
+            }
+        } catch (error: any) {
+            console.error("Error loading profile:", error.message);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleSaveProfile = async () => {
+        if (!session?.id) return;
+
+        try {
+            const { error } = await supabase
+                .from("profiles")
+                .update({
+                    full_name: formData.full_name,
+                    phone: formData.phone,
+                    updated_at: new Date().toISOString()
+                } as any)
+                .eq("id", session.id);
+
+            if (error) throw error;
+
+            setProfile({ ...profile, ...formData });
+            setIsEditing(false);
+            alert("Perfil actualizado correctamente");
+        } catch (error) {
+            console.error("Error updating profile:", error);
+            alert("Error al actualizar perfil");
         }
     };
 
@@ -76,6 +130,42 @@ export default function ProfilePage() {
                 className="glass-card rounded-2xl p-6 relative overflow-hidden"
             >
                 <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-purple-500/20 z-0" />
+
+                {/* Edit Toggle Button */}
+                <div className="absolute top-4 right-4 z-20">
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                            if (isEditing) handleSaveProfile();
+                            else setIsEditing(true);
+                        }}
+                        className={`backdrop-blur-md transition-all ${isEditing ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30' : 'bg-white/10 hover:bg-white/20'}`}
+                    >
+                        {isEditing ? (
+                            <>
+                                <Save className="w-4 h-4 mr-2" />
+                                Guardar
+                            </>
+                        ) : (
+                            <>
+                                <Edit className="w-4 h-4 mr-2" />
+                                Editar
+                            </>
+                        )}
+                    </Button>
+                    {isEditing && (
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setIsEditing(false)}
+                            className="ml-2 bg-red-500/10 text-red-400 hover:bg-red-500/20 backdrop-blur-md"
+                        >
+                            <X className="w-4 h-4" />
+                        </Button>
+                    )}
+                </div>
+
                 <div className="relative z-10 flex items-center gap-4">
                     <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary to-purple-500 p-[2px]">
                         <div className="w-full h-full rounded-full bg-black flex items-center justify-center overflow-hidden">
@@ -83,18 +173,46 @@ export default function ProfilePage() {
                                 <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
                             ) : (
                                 <span className="text-2xl font-bold text-white">
-                                    {(profile?.full_name?.[0] || session.user.email?.[0] || "U").toUpperCase()}
+                                    {(profile?.full_name?.[0] || session.email?.[0] || "U").toUpperCase()}
                                 </span>
                             )}
                         </div>
                     </div>
                     <div className="flex-1 min-w-0">
-                        <h1 className="text-xl font-bold truncate">
-                            {profile?.full_name || "Usuario"}
-                        </h1>
-                        <p className="text-sm text-muted-foreground truncate">
-                            {session.user.email}
-                        </p>
+                        {isEditing ? (
+                            <div className="space-y-2 pr-20">
+                                <input
+                                    type="text"
+                                    value={formData.full_name}
+                                    onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+                                    placeholder="Nombre completo"
+                                    className="w-full bg-black/40 border border-white/10 rounded px-2 py-1 text-sm font-bold focus:outline-none focus:ring-1 focus:ring-primary"
+                                />
+                                <input
+                                    type="tel"
+                                    value={formData.phone || ""}
+                                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                                    placeholder="Teléfono (Opcional)"
+                                    className="w-full bg-black/40 border border-white/10 rounded px-2 py-1 text-xs text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                                />
+                            </div>
+                        ) : (
+                            <>
+                                <h1 className="text-xl font-bold truncate">
+                                    {profile?.full_name || "Usuario"}
+                                </h1>
+                                <p className="text-sm text-muted-foreground truncate">
+                                    {session.email}
+                                </p>
+                                {profile?.phone && (
+                                    <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                                        <Phone className="w-3 h-3" />
+                                        {profile.phone}
+                                    </p>
+                                )}
+                            </>
+                        )}
+
                         <div className="flex items-center gap-1 mt-1">
                             <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/20 text-primary border border-primary/20">
                                 {profile?.role === 'business_owner' ? 'Dueño de Negocio' : 'Miembro'}
@@ -110,6 +228,7 @@ export default function ProfilePage() {
 
                 <motion.button
                     whileTap={{ scale: 0.98 }}
+                    onClick={() => navigate("/favorites")}
                     className="w-full glass p-4 rounded-xl flex items-center gap-3 hover:bg-white/5 transition-colors"
                 >
                     <div className="w-10 h-10 rounded-lg bg-red-500/10 flex items-center justify-center text-red-500">

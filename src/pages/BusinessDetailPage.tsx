@@ -1,6 +1,7 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { ArrowLeft, MapPin, Phone, Share2, Heart, Navigation, Star, Clock } from "lucide-react";
+import { Helmet } from "react-helmet-async";
 import { Button } from "../components/ui/Button";
 import { UnlockPromoModal } from "../components/ui/UnlockPromoModal";
 import { ReviewModal } from "../components/ui/ReviewModal";
@@ -224,6 +225,11 @@ export default function BusinessDetailPage() {
 
     return (
         <div className="pb-24 bg-background min-h-screen relative">
+            <Helmet>
+                <title>{business.name} | Directorio Zona</title>
+                <meta name="description" content={`Descubre ${business.name} en ${business.category}. ${business.description?.substring(0, 150)}...`} />
+            </Helmet>
+
             {/* Hero Section */}
             <div className="h-64 w-full relative overflow-hidden">
                 <img

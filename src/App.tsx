@@ -31,8 +31,35 @@ function App() {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
       setSession(session);
+
+      // Sync profile from metadata on login if missing
+      if (event === 'SIGNED_IN' && session?.user) {
+        const { user } = session;
+        const metadata = user.user_metadata;
+        const fullName = metadata.full_name || metadata.name || metadata.picture;
+        const avatarUrl = metadata.avatar_url || metadata.picture;
+
+        if (fullName || avatarUrl) {
+          // Check if profile needs update
+          const { data } = await supabase
+            .from('profiles')
+            .select('full_name, avatar_url')
+            .eq('id', user.id)
+            .single();
+
+          const profile = data as { full_name: string | null; avatar_url: string | null } | null;
+
+          if (profile && (!profile.full_name && fullName)) {
+            await supabase.from('profiles').update({
+              full_name: fullName,
+              avatar_url: avatarUrl || profile.avatar_url,
+              updated_at: new Date().toISOString()
+            } as any).eq('id', user.id);
+          }
+        }
+      }
     });
 
     return () => subscription.unsubscribe();

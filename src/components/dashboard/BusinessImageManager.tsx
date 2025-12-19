@@ -33,61 +33,41 @@ export function BusinessImageManager() {
         });
     }, []);
 
+    const [saving, setSaving] = useState(false);
+
     const handleUploadSuccess = async (url: string) => {
         if (!businessId) return;
 
         try {
+            setSaving(true);
             // Update business record with new image URL
-            // Using raw REST API since auto-generated types don't include image_url yet
-            const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-            const apiKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-            const session = await supabase.auth.getSession();
+            const { error } = await supabase
+                .from("businesses")
+                .update({ image_url: url } as any)
+                .eq("id", businessId);
 
-            const response = await fetch(`${supabaseUrl}/rest/v1/businesses?id=eq.${businessId}`, {
-                method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'apikey': apiKey || '',
-                    'Authorization': `Bearer ${session.data.session?.access_token || ''}`
-                },
-                body: JSON.stringify({ image_url: url })
-            });
-
-            if (!response.ok) {
-                const error = await response.text();
-                throw new Error(`Failed to update image: ${error}`);
-            }
+            if (error) throw error;
 
             setCurrentImage(url);
             alert("¡Imagen actualizada con éxito! ✅");
         } catch (error) {
             console.error("Error updating business image:", error);
-            alert("Error al guardar la imagen. Por favor intenta de nuevo.");
+            alert("Error al guardar la imagen.");
+        } finally {
+            setSaving(false);
         }
     };
 
-    if (loading) {
-        return <div className="text-center py-12 text-muted-foreground">Cargando...</div>;
-    }
-
-    if (!businessId) {
-        return (
-            <div className="text-center py-12">
-                <p className="text-muted-foreground mb-4">
-                    No se encontró ningún negocio asociado a tu cuenta.
-                </p>
-                <p className="text-sm text-muted-foreground">
-                    Contacta a soporte para registrar tu negocio.
-                </p>
-            </div>
-        );
-    }
+    if (loading) return <div className="text-center py-12 text-muted-foreground">Cargando...</div>;
 
     return (
-        <ImageUpload
-            businessId={businessId}
-            currentImageUrl={currentImage}
-            onUploadSuccess={handleUploadSuccess}
-        />
+        <div className="space-y-2">
+            <ImageUpload
+                businessId={businessId!}
+                currentImageUrl={currentImage}
+                onUploadSuccess={handleUploadSuccess}
+            />
+            {saving && <p className="text-xs text-center text-primary animate-pulse">Guardando cambios en el sistema...</p>}
+        </div>
     );
 }

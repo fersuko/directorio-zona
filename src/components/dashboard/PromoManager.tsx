@@ -1,50 +1,99 @@
-import { useState } from "react";
-import { Plus, Trash2, Tag, Calendar } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Plus, Trash2, Tag, Calendar, Loader2 } from "lucide-react";
 import { Button } from "../ui/Button";
+import { supabase } from "../../lib/supabase";
 
 interface Promo {
-    id: number;
+    id: string; // Changed to string (UUID)
+    business_id: string;
     title: string;
-    description: string;
-    active: boolean;
-    expiresAt: string;
+    description: string | null;
+    active: boolean; // Computed field
+    valid_until: string | null;
+    created_at: string;
 }
 
 interface PromoManagerProps {
     planId: 'free' | 'launch' | 'featured';
     businessName?: string;
+    businessId?: string; // Added prop for filtering
 }
 
-export function PromoManager({ planId, businessName }: PromoManagerProps) {
-    const [promos, setPromos] = useState<Promo[]>([
-        {
-            id: 1,
-            title: "2x1 en Cervezas",
-            description: "Válido todos los jueves de 6pm a 9pm.",
-            active: true,
-            expiresAt: "2024-12-31",
-        },
-        {
-            id: 2,
-            title: "Postre Gratis",
-            description: "En consumo mayor a $500.",
-            active: false,
-            expiresAt: "2024-11-30",
-        },
-    ]);
-
+export function PromoManager({ planId, businessName, businessId }: PromoManagerProps) {
+    const [promos, setPromos] = useState<Promo[]>([]);
+    const [loading, setLoading] = useState(true);
     const [isCreating, setIsCreating] = useState(false);
+    const [newPromoData, setNewPromoData] = useState({ title: "", description: "", validUntil: "" });
 
-    const handleSavePromo = () => {
-        const newPromo: Promo = {
-            id: Date.now(),
-            title: "Nueva Promo",
-            description: "Descripción de prueba",
-            active: true,
-            expiresAt: "2024-12-31",
-        };
-        setPromos([...promos, newPromo]);
-        setIsCreating(false);
+    useEffect(() => {
+        if (businessId) {
+            fetchPromos();
+        }
+    }, [businessId]);
+
+    const fetchPromos = async () => {
+        try {
+            setLoading(true);
+            const { data, error } = await supabase
+                .from("promotions")
+                .select("*")
+                .eq("business_id", businessId)
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+
+            const typedPromos: Promo[] = (data as any[] || []).map(p => ({
+                ...p,
+                active: p.valid_until ? new Date(p.valid_until) > new Date() : true
+            }));
+
+            setPromos(typedPromos);
+        } catch (error) {
+            console.error("Error fetching promos:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleSavePromo = async () => {
+        if (!businessId || !newPromoData.title) return;
+
+        try {
+            const { error } = await supabase
+                .from("promotions")
+                .insert([{
+                    business_id: businessId,
+                    title: newPromoData.title,
+                    description: newPromoData.description,
+                    valid_until: newPromoData.validUntil || null
+                }] as any);
+
+            if (error) throw error;
+
+            await fetchPromos();
+            setIsCreating(false);
+            setNewPromoData({ title: "", description: "", validUntil: "" });
+        } catch (error) {
+            console.error("Error creating promo:", error);
+            alert("Error al guardar la promoción");
+        }
+    };
+
+    const handleDeletePromo = async (id: string) => {
+        if (!confirm("¿Estás seguro de eliminar esta promoción?")) return;
+
+        try {
+            const { error } = await supabase
+                .from("promotions")
+                .delete()
+                .eq("id", id);
+
+            if (error) throw error;
+            await fetchPromos();
+        } catch (error) {
+            console.error("Error deleting promo:", error);
+            alert("Error al eliminar");
+        }
     };
 
     const handleUpgrade = () => {
@@ -54,6 +103,8 @@ export function PromoManager({ planId, businessName }: PromoManagerProps) {
     };
 
     const canCreatePromos = planId !== 'free';
+
+    if (!businessId) return <div className="text-center p-4">Cargando negocio...</div>;
 
     return (
         <div className="space-y-6">
@@ -93,11 +144,21 @@ export function PromoManager({ planId, businessName }: PromoManagerProps) {
                         <input
                             type="text"
                             placeholder="Título (ej. 2x1 en Tacos)"
+                            value={newPromoData.title}
+                            onChange={(e) => setNewPromoData({ ...newPromoData, title: e.target.value })}
                             className="w-full bg-background/50 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary/50"
                         />
                         <textarea
                             placeholder="Descripción y condiciones..."
+                            value={newPromoData.description}
+                            onChange={(e) => setNewPromoData({ ...newPromoData, description: e.target.value })}
                             className="w-full bg-background/50 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary/50 h-20 resize-none"
+                        />
+                        <input
+                            type="date"
+                            value={newPromoData.validUntil}
+                            onChange={(e) => setNewPromoData({ ...newPromoData, validUntil: e.target.value })}
+                            className="w-full bg-background/50 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary/50"
                         />
                         <div className="flex gap-2">
                             <Button variant="premium" size="sm" onClick={handleSavePromo}>
@@ -112,33 +173,42 @@ export function PromoManager({ planId, businessName }: PromoManagerProps) {
             )}
 
             <div className="space-y-3">
-                {promos.map((promo) => (
-                    <div
-                        key={promo.id}
-                        className={`glass-card p-4 rounded-xl flex justify-between items-start ${!promo.active ? "opacity-60" : ""
-                            }`}
-                    >
-                        <div className="flex gap-3">
-                            <div
-                                className={`w-10 h-10 rounded-full flex items-center justify-center ${promo.active ? "bg-green-500/10 text-green-500" : "bg-muted text-muted-foreground"
-                                    }`}
-                            >
-                                <Tag className="w-5 h-5" />
-                            </div>
-                            <div>
-                                <h4 className="font-bold text-sm">{promo.title}</h4>
-                                <p className="text-xs text-muted-foreground">{promo.description}</p>
-                                <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground/80">
-                                    <Calendar className="w-3 h-3" />
-                                    <span>Vence: {promo.expiresAt}</span>
+                {loading ? (
+                    <div className="flex justify-center py-8"><Loader2 className="animate-spin w-8 h-8 text-primary" /></div>
+                ) : promos.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground text-sm">No tienes promociones activas.</div>
+                ) : (
+                    promos.map((promo) => (
+                        <div
+                            key={promo.id}
+                            className={`glass-card p-4 rounded-xl flex justify-between items-start ${!promo.active ? "opacity-60" : ""
+                                }`}
+                        >
+                            <div className="flex gap-3">
+                                <div
+                                    className={`w-10 h-10 rounded-full flex items-center justify-center ${promo.active ? "bg-green-500/10 text-green-500" : "bg-muted text-muted-foreground"
+                                        }`}
+                                >
+                                    <Tag className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <h4 className="font-bold text-sm">{promo.title}</h4>
+                                    <p className="text-xs text-muted-foreground">{promo.description}</p>
+                                    <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground/80">
+                                        <Calendar className="w-3 h-3" />
+                                        <span>Vence: {promo.valid_until ? new Date(promo.valid_until).toLocaleDateString() : 'Siempre'}</span>
+                                    </div>
                                 </div>
                             </div>
+                            <button
+                                onClick={() => handleDeletePromo(promo.id)}
+                                className="text-muted-foreground hover:text-red-500 transition-colors"
+                            >
+                                <Trash2 className="w-4 h-4" />
+                            </button>
                         </div>
-                        <button className="text-muted-foreground hover:text-red-500 transition-colors">
-                            <Trash2 className="w-4 h-4" />
-                        </button>
-                    </div>
-                ))}
+                    ))
+                )}
             </div>
         </div>
     );

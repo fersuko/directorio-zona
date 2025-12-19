@@ -2,9 +2,10 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { BarChart3, Store, Tag, Settings, LogOut } from "lucide-react";
 import { Button } from "../components/ui/Button";
-import { StatsCard } from "../components/dashboard/StatsCard";
 import { PromoManager } from "../components/dashboard/PromoManager";
 import { BusinessImageManager } from "../components/dashboard/BusinessImageManager";
+import { DashboardStats } from "../components/dashboard/DashboardStats";
+import { BusinessInfoEditor } from "../components/dashboard/BusinessInfoEditor";
 import { supabase } from "../lib/supabase";
 
 export default function DashboardPage() {
@@ -12,6 +13,9 @@ export default function DashboardPage() {
     const [activeTab, setActiveTab] = useState("overview");
     const [loading, setLoading] = useState(true);
     const [business, setBusiness] = useState<any>(null);
+    const [profile, setProfile] = useState<any>(null);
+    const [isEditingProfile, setIsEditingProfile] = useState(false);
+    const [profileForm, setProfileForm] = useState({ full_name: "", phone: "" });
 
     const handleLogout = async () => {
         await supabase.auth.signOut();
@@ -20,34 +24,49 @@ export default function DashboardPage() {
 
     useEffect(() => {
         const checkUser = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
 
-            if (!user) {
-                navigate("/login");
-                return;
+                if (!user) {
+                    navigate("/login");
+                    return;
+                }
+
+                const { data: profileData, error: profileError } = await supabase
+                    .from("profiles")
+                    .select("*")
+                    .eq("id", user.id)
+                    .single();
+
+                if (profileError) throw profileError;
+
+                if ((profileData as any)?.role !== 'business_owner') {
+                    navigate("/profile");
+                    return;
+                }
+
+                setProfile(profileData);
+                setProfileForm({
+                    full_name: profileData.full_name || "",
+                    phone: profileData.phone || ""
+                });
+
+                const { data: businessData, error: businessError } = await supabase
+                    .from("businesses")
+                    .select("*")
+                    .eq("owner_id", user.id)
+                    .maybeSingle();
+
+                if (businessError) throw businessError;
+
+                if (businessData) {
+                    setBusiness(businessData);
+                }
+            } catch (error) {
+                console.error("Error loading dashboard:", error);
+            } finally {
+                setLoading(false);
             }
-
-            const { data: profile } = await supabase
-                .from("profiles")
-                .select("role")
-                .eq("id", user.id)
-                .single();
-
-            if ((profile as any)?.role !== 'business_owner') {
-                navigate("/profile");
-                return;
-            }
-
-            const { data: businessData } = await supabase
-                .from("businesses")
-                .select("*")
-                .eq("owner_id", user.id)
-                .single();
-
-            if (businessData) {
-                setBusiness(businessData);
-            }
-            setLoading(false);
         };
 
         checkUser();
@@ -99,32 +118,10 @@ export default function DashboardPage() {
             <div className="px-4 space-y-6">
                 {activeTab === "overview" && (
                     <div className="space-y-6">
-                        <div className="grid grid-cols-2 gap-4">
-                            <StatsCard
-                                title="Visitas Totales"
-                                value="1,234"
-                                icon={Store}
-                                trend="12%"
-                                trendUp={true}
-                                planId={business?.plan_id || 'free'}
-                            />
-                            <StatsCard
-                                title="Promos Canjeadas"
-                                value="56"
-                                icon={Tag}
-                                trend="5%"
-                                trendUp={true}
-                                planId={business?.plan_id || 'free'}
-                            />
-                            <StatsCard
-                                title="Clics en Mapa"
-                                value="89"
-                                icon={BarChart3}
-                                trend="2%"
-                                trendUp={false}
-                                planId={business?.plan_id || 'free'}
-                            />
-                        </div>
+                        <DashboardStats
+                            businessId={business?.id}
+                            planId={business?.plan_id || 'free'}
+                        />
 
                         <div className="glass-card p-4 rounded-xl">
                             <h3 className="font-bold mb-4">Actividad Reciente</h3>
@@ -157,13 +154,12 @@ export default function DashboardPage() {
                         </div>
 
                         <div className="glass-card p-6 rounded-xl">
-                            <h3 className="font-bold text-lg mb-2">Información del Negocio</h3>
-                            <p className="text-sm text-muted-foreground mb-4">
-                                Nombre: <span className="text-foreground font-medium">Mi Negocio</span>
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                                Edición de nombre, horarios y contacto próximamente.
-                            </p>
+                            <h3 className="font-bold text-lg mb-4">Información del Negocio</h3>
+                            <BusinessInfoEditor
+                                businessId={business?.id}
+                                initialData={business}
+                                onUpdate={() => window.location.reload()} // Simple reload to refresh data for now
+                            />
                         </div>
                     </div>
                 )}
@@ -172,17 +168,107 @@ export default function DashboardPage() {
                     <PromoManager
                         planId={business?.plan_id || 'free'}
                         businessName={business?.name}
+                        businessId={business?.id}
                     />
                 )}
 
                 {activeTab === "settings" && (
-                    <div className="glass-card p-6 rounded-xl text-center py-12">
-                        <Settings className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                        <h3 className="font-bold text-lg">Ajustes de Cuenta</h3>
-                        <p className="text-muted-foreground text-sm mb-6">
-                            Gestiona tu suscripción y preferencias.
-                        </p>
-                        <Button variant="secondary">Próximamente</Button>
+                    <div className="space-y-6">
+                        <div className="glass-card p-6 rounded-xl">
+                            <div className="flex justify-between items-start mb-6">
+                                <div>
+                                    <h3 className="font-bold text-lg">Perfil Personal</h3>
+                                    <p className="text-sm text-muted-foreground">
+                                        Tus datos como dueño del negocio.
+                                    </p>
+                                </div>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={async () => {
+                                        if (isEditingProfile) {
+                                            try {
+                                                const { error } = await supabase
+                                                    .from("profiles")
+                                                    .update({
+                                                        full_name: profileForm.full_name,
+                                                        phone: profileForm.phone,
+                                                        updated_at: new Date().toISOString()
+                                                    } as any)
+                                                    .eq("id", profile.id);
+
+                                                if (error) throw error;
+                                                setProfile({ ...profile, ...profileForm });
+                                                setIsEditingProfile(false);
+                                                alert("Perfil actualizado");
+                                            } catch (e) {
+                                                console.error(e);
+                                                alert("Error al guardar");
+                                            }
+                                        } else {
+                                            setIsEditingProfile(true);
+                                        }
+                                    }}
+                                    className={isEditingProfile ? "text-green-400 bg-green-500/10" : ""}
+                                >
+                                    {isEditingProfile ? "Guardar Cambios" : "Editar Perfil"}
+                                </Button>
+                            </div>
+
+                            <div className="space-y-4 max-w-md">
+                                <div>
+                                    <label className="text-xs text-muted-foreground mb-1 block">Email</label>
+                                    <div className="p-2 rounded bg-white/5 border border-white/10 text-sm opacity-60">
+                                        {profile?.email || "No disponible"}
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="text-xs text-muted-foreground mb-1 block">Nombre Completo</label>
+                                        {isEditingProfile ? (
+                                            <input
+                                                type="text"
+                                                value={profileForm.full_name}
+                                                onChange={(e) => setProfileForm({ ...profileForm, full_name: e.target.value })}
+                                                className="w-full bg-black/40 border border-white/10 rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                                                placeholder="Tu nombre"
+                                            />
+                                        ) : (
+                                            <div className="p-2 rounded bg-white/5 border border-white/10 text-sm font-medium">
+                                                {profile?.full_name || "Sin nombre"}
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div>
+                                        <label className="text-xs text-muted-foreground mb-1 block">Teléfono Personal</label>
+                                        {isEditingProfile ? (
+                                            <input
+                                                type="tel"
+                                                value={profileForm.phone}
+                                                onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
+                                                className="w-full bg-black/40 border border-white/10 rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                                                placeholder="Tu teléfono"
+                                            />
+                                        ) : (
+                                            <div className="p-2 rounded bg-white/5 border border-white/10 text-sm font-medium">
+                                                {profile?.phone || "Sin teléfono"}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="glass-card p-6 rounded-xl border border-red-500/20">
+                            <h3 className="font-bold text-lg text-red-400 mb-2">Zona de Peligro</h3>
+                            <p className="text-sm text-muted-foreground mb-4">
+                                Acciones irreversibles para tu cuenta.
+                            </p>
+                            <Button variant="outline" className="border-red-500/50 text-red-400 hover:bg-red-500/10">
+                                Eliminar Cuenta
+                            </Button>
+                        </div>
                     </div>
                 )}
             </div>

@@ -542,7 +542,6 @@ export default function AdminDashboard() {
                 message={`¿Estás seguro de que deseas eliminar "${deleteConfirm?.name}"? Esta acción no se puede deshacer.`}
                 confirmText="Eliminar"
                 cancelText="Cancelar"
-                cancelText="Cancelar"
                 variant="danger"
             />
 

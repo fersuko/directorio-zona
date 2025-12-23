@@ -89,7 +89,7 @@ export function TransferOwnershipModal({ isOpen, onClose, onConfirm, businessNam
                             Cancelar
                         </Button>
                         <Button
-                            variant="primary"
+                            variant="default"
                             disabled={!selectedUser}
                             onClick={() => selectedUser && onConfirm(selectedUser.id)}
                             className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-black border-yellow-600"

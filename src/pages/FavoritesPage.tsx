@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Star, MapPin, Heart, ArrowRight } from "lucide-react";
 import { motion } from "framer-motion";
 import { supabase } from "../lib/supabase";

@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Search, Star, Eye, EyeOff, User, Edit, Trash2 } from "lucide-react";
-import { ActionMenu } from "../ui/ActionMenu";
+import { Search, Eye, EyeOff, User, Edit, Trash2 } from "lucide-react";
+
 import type { Business } from "../../types";
 
 interface AdminBusinessTableProps {
@@ -35,21 +35,7 @@ export function AdminBusinessTable({ businesses, onChangePlan, onToggleVisibilit
         }
     };
 
-    const getPlanColor = (planId?: string) => {
-        switch (planId) {
-            case 'featured': return 'bg-brand-gold/20 text-brand-gold border-brand-gold/30';
-            case 'launch': return 'bg-purple-500/20 text-purple-400 border-purple-500/30';
-            default: return 'bg-white/5 text-muted-foreground border-white/10';
-        }
-    };
 
-    const getPlanLabel = (planId?: string) => {
-        switch (planId) {
-            case 'featured': return 'Destacado';
-            case 'launch': return 'Lanzamiento';
-            default: return 'Gratuito';
-        }
-    };
 
     return (
         <div className="space-y-4">
@@ -109,8 +95,8 @@ export function AdminBusinessTable({ businesses, onChangePlan, onToggleVisibilit
                                         <select
                                             value={business.planId || 'free'}
                                             onChange={(e) => handlePlanChange(business.id, business.planId || 'free', e.target.value)}
-                                            className={`appearance-none bg-transparent font-medium border-0 cursor-pointer focus:ring-0 text-center w-full px-2 py-1 rounded-full text-xs transition-colors ${(business.planId === 'premium' || business.planId === 'featured') ? 'bg-purple-500/20 text-purple-400 hover:bg-purple-500/30' :
-                                                (business.planId === 'basic' || business.planId === 'launch') ? 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/30' :
+                                            className={`appearance-none bg-transparent font-medium border-0 cursor-pointer focus:ring-0 text-center w-full px-2 py-1 rounded-full text-xs transition-colors ${((business.planId as string) === 'premium' || (business.planId as string) === 'featured') ? 'bg-purple-500/20 text-purple-400 hover:bg-purple-500/30' :
+                                                ((business.planId as string) === 'basic' || (business.planId as string) === 'launch') ? 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/30' :
                                                     'bg-gray-500/20 text-gray-400 hover:bg-gray-500/30'
                                                 }`}
                                         >

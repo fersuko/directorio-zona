@@ -26,7 +26,7 @@ export default function Home() {
             >
                 {/* Map Background Overlay */}
                 {/* Map Background Overlay - Monterrey Center */}
-                <div className="absolute inset-0 z-0 opacity-40 pointer-events-none grayscale contrast-125">
+                <div className="absolute inset-0 z-0 opacity-50 pointer-events-none grayscale-[0.2] contrast-110">
                     <MapContainer
                         center={[25.6667, -100.3167]}
                         zoom={14}
@@ -38,19 +38,18 @@ export default function Home() {
                         className="w-full h-full"
                     >
                         <TileLayer
-                            url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+                            url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
                         />
                     </MapContainer>
                 </div>
 
                 <div className="relative z-10 space-y-4 flex flex-col items-center">
                     <Logo className="scale-125 mb-2" />
-                    <p className="text-muted-foreground text-sm max-w-[250px]">
+                    <p className="text-foreground font-semibold text-sm max-w-[250px] drop-shadow-sm brightness-110">
                         Tu guía comercial del centro de Monterrey
                     </p>
                     <Button
-                        variant="premium"
-                        className="w-full shadow-lg shadow-brand-red/20 bg-brand-red hover:bg-brand-red/90 text-white border-none"
+                        className="w-full shadow-xl shadow-brand-blue/20 bg-gradient-to-r from-brand-blue to-brand-red text-white border-none font-bold py-6 text-base hover:scale-[1.02] active:scale-[0.98] transition-all"
                         onClick={() => navigate("/promos")}
                     >
                         Explorar Ofertas
@@ -190,14 +189,14 @@ export default function Home() {
             {/* Join CTA */}
             <section className="pt-4">
                 <div className="glass-card p-6 rounded-2xl text-center space-y-4 relative overflow-hidden">
-                    <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-purple-500/10 pointer-events-none" />
+                    <div className="absolute inset-0 bg-gradient-to-br from-brand-blue/20 to-brand-red/20 pointer-events-none" />
                     <h2 className="text-xl font-bold relative z-10">¿Tienes un negocio?</h2>
                     <p className="text-sm text-muted-foreground relative z-10">
                         Únete al directorio digital más exclusivo de Monterrey y llega a más clientes.
                     </p>
                     <Button
                         onClick={() => navigate("/unete")}
-                        className="w-full bg-gradient-to-r from-primary to-purple-600 text-white shadow-lg relative z-10"
+                        className="w-full bg-gradient-to-r from-brand-blue to-brand-red text-white shadow-lg relative z-10 font-bold"
                     >
                         Registrar mi Negocio
                     </Button>

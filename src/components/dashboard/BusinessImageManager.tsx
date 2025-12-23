@@ -41,9 +41,9 @@ export function BusinessImageManager() {
         try {
             setSaving(true);
             // Update business record with new image URL
-            const { error } = await supabase
+            const { error } = await (supabase as any)
                 .from("businesses")
-                .update({ image_url: url } as any)
+                .update({ image_url: url })
                 .eq("id", businessId);
 
             if (error) throw error;

@@ -33,7 +33,7 @@ export default function ProfilePage() {
 
             setSession(user);
 
-            const { data, error } = await supabase
+            const { data, error } = await (supabase as any)
                 .from("profiles")
                 .select("*")
                 .eq("id", user.id)
@@ -71,13 +71,13 @@ export default function ProfilePage() {
         if (!session?.id) return;
 
         try {
-            const { error } = await supabase
+            const { error } = await (supabase as any)
                 .from("profiles")
                 .update({
                     full_name: formData.full_name,
                     phone: formData.phone,
                     updated_at: new Date().toISOString()
-                } as any)
+                })
                 .eq("id", session.id);
 
             if (error) throw error;
@@ -107,14 +107,17 @@ export default function ProfilePage() {
     if (!session) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4 p-4 text-center">
-                <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-2">
-                    <User className="w-8 h-8 text-muted-foreground" />
+                <div className="w-20 h-20 bg-gradient-to-br from-brand-blue/10 to-brand-red/10 rounded-full flex items-center justify-center mb-2 border border-brand-blue/10 shadow-inner">
+                    <User className="w-10 h-10 text-brand-blue" />
                 </div>
-                <h2 className="text-xl font-bold">No has iniciado sesión</h2>
+                <h2 className="text-2xl font-black tracking-tight">No has iniciado sesión</h2>
                 <p className="text-muted-foreground text-sm max-w-xs">
                     Ingresa para ver tu perfil, guardar favoritos y acceder a promociones exclusivas.
                 </p>
-                <Button onClick={() => navigate("/login")} variant="premium" className="w-full max-w-xs">
+                <Button
+                    onClick={() => navigate("/login")}
+                    className="w-full max-w-xs bg-gradient-to-r from-brand-blue to-brand-red text-white font-bold py-6 shadow-lg hover:shadow-brand-blue/20 transition-all border-none"
+                >
                     Iniciar Sesión
                 </Button>
             </div>
@@ -129,7 +132,7 @@ export default function ProfilePage() {
                 animate={{ opacity: 1, y: 0 }}
                 className="glass-card rounded-2xl p-6 relative overflow-hidden"
             >
-                <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-purple-500/20 z-0" />
+                <div className="absolute inset-0 bg-gradient-to-br from-brand-blue/20 to-brand-red/20 z-0" />
 
                 {/* Edit Toggle Button */}
                 <div className="absolute top-4 right-4 z-20">
@@ -167,7 +170,7 @@ export default function ProfilePage() {
                 </div>
 
                 <div className="relative z-10 flex items-center gap-4">
-                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary to-purple-500 p-[2px]">
+                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-brand-blue to-brand-red p-[2px]">
                         <div className="w-full h-full rounded-full bg-black flex items-center justify-center overflow-hidden">
                             {profile?.avatar_url ? (
                                 <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
@@ -214,7 +217,7 @@ export default function ProfilePage() {
                         )}
 
                         <div className="flex items-center gap-1 mt-1">
-                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/20 text-primary border border-primary/20">
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-brand-blue/20 text-brand-blue border border-brand-blue/20">
                                 {profile?.role === 'business_owner' ? 'Dueño de Negocio' : 'Miembro'}
                             </span>
                         </div>
@@ -272,13 +275,13 @@ export default function ProfilePage() {
                     <motion.button
                         whileTap={{ scale: 0.98 }}
                         onClick={() => navigate("/unete")}
-                        className="w-full glass p-4 rounded-xl flex items-center gap-3 hover:bg-white/5 transition-colors border border-purple-500/20 bg-purple-500/5"
+                        className="w-full glass p-4 rounded-xl flex items-center gap-3 hover:bg-white/5 transition-colors border-brand-red/20 bg-brand-red/5"
                     >
-                        <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center text-purple-500">
+                        <div className="w-10 h-10 rounded-lg bg-brand-red/10 flex items-center justify-center text-brand-red">
                             <Store className="w-5 h-5" />
                         </div>
                         <div className="flex-1 text-left">
-                            <h3 className="font-medium text-purple-400">Registra tu Negocio</h3>
+                            <h3 className="font-medium text-brand-red/90">Registra tu Negocio</h3>
                             <p className="text-xs text-muted-foreground">¡Haz crecer tus ventas hoy!</p>
                         </div>
                     </motion.button>

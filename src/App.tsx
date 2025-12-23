@@ -52,11 +52,11 @@ function App() {
           const profile = data as { full_name: string | null; avatar_url: string | null } | null;
 
           if (profile && (!profile.full_name && fullName)) {
-            await supabase.from('profiles').update({
+            await (supabase as any).from('profiles').update({
               full_name: fullName,
               avatar_url: avatarUrl || profile.avatar_url,
               updated_at: new Date().toISOString()
-            } as any).eq('id', user.id);
+            }).eq('id', user.id);
           }
         }
       }

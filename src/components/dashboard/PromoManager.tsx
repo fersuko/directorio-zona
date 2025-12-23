@@ -33,6 +33,7 @@ export function PromoManager({ planId, businessName, businessId }: PromoManagerP
 
     const fetchPromos = async () => {
         try {
+            if (!businessId) return;
             setLoading(true);
             const { data, error } = await supabase
                 .from("promotions")

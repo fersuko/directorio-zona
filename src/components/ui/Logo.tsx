@@ -14,9 +14,9 @@ export function Logo({ className = "", showText = true }: LogoProps) {
                 />
             </div>
             {showText && (
-                <div className="flex flex-col leading-none">
-                    <span className="text-xl font-bold text-brand-blue tracking-tight">directorio</span>
-                    <span className="text-2xl font-bold text-foreground/80 -mt-1 tracking-tighter">Zona</span>
+                <div className="flex flex-col leading-[0.8]">
+                    <span className="text-2xl font-black text-brand-blue tracking-tighter drop-shadow-[0_2px_2px_rgba(0,0,0,0.1)]">directorio</span>
+                    <span className="text-4xl font-black text-foreground/90 tracking-tighter -mt-1 drop-shadow-[0_2px_2px_rgba(0,0,0,0.2)]" style={{ textShadow: 'inset 0 1px 0 rgba(255,255,255,0.1), 0 1px 0 rgba(0,0,0,0.2)' }}>Zona</span>
                 </div>
             )}
         </div>

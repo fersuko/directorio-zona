@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, Bell, Shield, User, Info, ChevronRight, Moon, LogOut, Save, Loader2, ChevronDown, Lock, Trash2 } from "lucide-react";
+import { ArrowLeft, Bell, User, ChevronRight, Moon, LogOut, Save, Loader2, ChevronDown, Lock, Trash2 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { Button } from "../components/ui/Button";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
@@ -45,7 +45,7 @@ export default function SettingsPage() {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return;
 
-            const { data, error } = await supabase
+            const { data } = await (supabase as any)
                 .from("profiles")
                 .select("*")
                 .eq("id", user.id)
@@ -75,13 +75,13 @@ export default function SettingsPage() {
         if (!profile?.id) return;
         setSaving(true);
         try {
-            const { error } = await supabase
+            const { error } = await (supabase as any)
                 .from("profiles")
                 .update({
                     full_name: formData.full_name,
                     phone: formData.phone,
                     updated_at: new Date().toISOString()
-                } as any)
+                })
                 .eq("id", profile.id);
 
             if (error) throw error;
@@ -103,9 +103,9 @@ export default function SettingsPage() {
         if (!profile?.id) return;
 
         try {
-            const { error } = await supabase
+            const { error } = await (supabase as any)
                 .from("profiles")
-                .update({ notifications_enabled: newValue } as any)
+                .update({ notifications_enabled: newValue })
                 .eq("id", profile.id);
 
             if (error) {

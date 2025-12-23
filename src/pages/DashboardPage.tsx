@@ -32,7 +32,7 @@ export default function DashboardPage() {
                     return;
                 }
 
-                const { data: profileData, error: profileError } = await supabase
+                const { data: profileData, error: profileError } = await (supabase as any)
                     .from("profiles")
                     .select("*")
                     .eq("id", user.id)
@@ -188,13 +188,13 @@ export default function DashboardPage() {
                                     onClick={async () => {
                                         if (isEditingProfile) {
                                             try {
-                                                const { error } = await supabase
+                                                const { error } = await (supabase as any)
                                                     .from("profiles")
                                                     .update({
                                                         full_name: profileForm.full_name,
                                                         phone: profileForm.phone,
                                                         updated_at: new Date().toISOString()
-                                                    } as any)
+                                                    })
                                                     .eq("id", profile.id);
 
                                                 if (error) throw error;

@@ -5,9 +5,6 @@ import { Helmet } from "react-helmet-async";
 import { Button } from "../components/ui/Button";
 import { UnlockPromoModal } from "../components/ui/UnlockPromoModal";
 import { ReviewModal } from "../components/ui/ReviewModal";
-import businessesData from "../data/businesses.json";
-import type { Business } from "../types";
-import { getBusinessImage } from "../lib/businessImages";
 import { MapContainer, TileLayer, Marker, Polyline } from "react-leaflet";
 import { useGeolocation } from "../hooks/useGeolocation";
 import { supabase } from "../lib/supabase";
@@ -26,7 +23,7 @@ let DefaultIcon = L.icon({
 
 L.Marker.prototype.options.icon = DefaultIcon;
 
-const businesses = businessesData as Business[];
+
 
 export default function BusinessDetailPage() {
     const { id } = useParams();
@@ -108,6 +105,7 @@ export default function BusinessDetailPage() {
     }, [id]);
 
     const handleToggleFavorite = async () => {
+        if (!id) return;
         setTogglingFavorite(true);
         try {
             const { data: { user } } = await supabase.auth.getUser();
@@ -118,7 +116,7 @@ export default function BusinessDetailPage() {
 
             if (isFavorite) {
                 // Remove
-                const { error } = await supabase
+                const { error } = await (supabase as any)
                     .from("favorites")
                     .delete()
                     .eq("user_id", user.id)
@@ -127,7 +125,7 @@ export default function BusinessDetailPage() {
                 setIsFavorite(false);
             } else {
                 // Add
-                const { error } = await supabase
+                const { error } = await (supabase as any)
                     .from("favorites")
                     .insert({ user_id: user.id, business_id: id });
                 if (error) throw error;
@@ -141,6 +139,7 @@ export default function BusinessDetailPage() {
     };
 
     const handleSubmitReview = async (rating: number, comment: string) => {
+        if (!id) return;
         setSubmittingReview(true);
         try {
             const { data: { user } } = await supabase.auth.getUser();

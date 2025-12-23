@@ -14,21 +14,27 @@ export interface Database {
                     id: string
                     role: 'user' | 'business_owner' | 'admin'
                     full_name: string | null
+                    phone: string | null
                     avatar_url: string | null
+                    notifications_enabled: boolean
                     updated_at: string | null
                 }
                 Insert: {
                     id: string
                     role?: 'user' | 'business_owner' | 'admin'
                     full_name?: string | null
+                    phone?: string | null
                     avatar_url?: string | null
+                    notifications_enabled?: boolean
                     updated_at?: string | null
                 }
                 Update: {
                     id?: string
                     role?: 'user' | 'business_owner' | 'admin'
                     full_name?: string | null
+                    phone?: string | null
                     avatar_url?: string | null
+                    notifications_enabled?: boolean
                     updated_at?: string | null
                 }
             }
@@ -43,6 +49,7 @@ export interface Database {
                     location: any | null // PostGIS types are complex in JS
                     images: string[] | null
                     is_premium: boolean
+                    is_hidden: boolean
                     created_at: string
                     updated_at: string
                 }
@@ -56,6 +63,7 @@ export interface Database {
                     location?: any | null
                     images?: string[] | null
                     is_premium?: boolean
+                    is_hidden?: boolean
                     created_at?: string
                     updated_at?: string
                 }
@@ -69,6 +77,7 @@ export interface Database {
                     location?: any | null
                     images?: string[] | null
                     is_premium?: boolean
+                    is_hidden?: boolean
                     created_at?: string
                     updated_at?: string
                 }

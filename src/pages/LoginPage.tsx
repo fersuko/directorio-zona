@@ -79,9 +79,9 @@ export default function LoginPage() {
                 className="w-full max-w-md glass-card p-8 rounded-2xl space-y-6 relative overflow-hidden"
             >
                 {/* Decorative background elements */}
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary to-purple-500" />
-                <div className="absolute -top-20 -right-20 w-40 h-40 bg-primary/20 rounded-full blur-3xl" />
-                <div className="absolute -bottom-20 -left-20 w-40 h-40 bg-purple-500/20 rounded-full blur-3xl" />
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-brand-blue to-brand-red" />
+                <div className="absolute -top-20 -right-20 w-40 h-40 bg-brand-blue/20 rounded-full blur-3xl" />
+                <div className="absolute -bottom-20 -left-20 w-40 h-40 bg-brand-red/20 rounded-full blur-3xl" />
 
                 <div className="text-center space-y-2 relative z-10">
                     <h1 className="text-2xl font-bold bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">
@@ -168,8 +168,7 @@ export default function LoginPage() {
 
                     <Button
                         type="submit"
-                        variant="premium"
-                        className="w-full py-6 text-base font-semibold shadow-lg shadow-primary/20"
+                        className="w-full py-6 text-base font-bold bg-gradient-to-r from-brand-blue to-brand-red text-white shadow-lg shadow-brand-blue/20 border-none hover:scale-[1.02] active:scale-[0.98] transition-all"
                         disabled={loading}
                     >
                         {loading ? (

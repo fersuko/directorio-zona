@@ -62,7 +62,7 @@ export function BusinessInfoEditor({ businessId, initialData, onUpdate }: Busine
     const handleSave = async () => {
         setSaving(true);
         try {
-            const { error } = await supabase
+            const { error } = await (supabase as any)
                 .from("businesses")
                 .update({
                     name: formData.name,
@@ -70,7 +70,7 @@ export function BusinessInfoEditor({ businessId, initialData, onUpdate }: Busine
                     phone: formData.phone,
                     address: formData.address,
                     opening_hours: formData.opening_hours
-                } as any)
+                })
                 .eq("id", businessId);
 
             if (error) throw error;

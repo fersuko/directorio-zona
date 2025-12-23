@@ -24,6 +24,7 @@ export function DashboardStats({ businessId, planId }: DashboardStatsProps) {
     }, [businessId]);
 
     const fetchStats = async () => {
+        if (!businessId) return;
         try {
             // 1. Count Active Promos
             const { count: promoCount } = await supabase

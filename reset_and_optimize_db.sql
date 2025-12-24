@@ -89,11 +89,20 @@ ALTER TABLE public.favorites ENABLE ROW LEVEL SECURITY;
 
 -- 7. POLÍTICAS DE ACCESO (Simples y Efectivas)
 
--- ADMINS: Control Total en todo
-CREATE POLICY "Admins have full access" ON public.profiles FOR ALL USING ( (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'admin' );
-CREATE POLICY "Admins have full access" ON public.businesses FOR ALL USING ( (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'admin' );
-CREATE POLICY "Admins have full access" ON public.reviews FOR ALL USING ( (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'admin' );
-CREATE POLICY "Admins have full access" ON public.favorites FOR ALL USING ( (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'admin' );
+-- Función de seguridad para evitar recursión infinita
+-- Al ser SECURITY DEFINER, permite consultar la tabla profiles sin disparar RLS recursivos.
+CREATE OR REPLACE FUNCTION public.check_is_admin()
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN (SELECT role = 'admin' FROM public.profiles WHERE id = auth.uid());
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ADMINS: Control Total en todo (usando la función para evitar loops)
+CREATE POLICY "Admins have full access" ON public.profiles FOR ALL USING ( public.check_is_admin() );
+CREATE POLICY "Admins have full access" ON public.businesses FOR ALL USING ( public.check_is_admin() );
+CREATE POLICY "Admins have full access" ON public.reviews FOR ALL USING ( public.check_is_admin() );
+CREATE POLICY "Admins have full access" ON public.favorites FOR ALL USING ( public.check_is_admin() );
 
 -- PUBLICO: Lectura
 CREATE POLICY "Public profiles are readable" ON public.profiles FOR SELECT USING (true);
@@ -172,7 +181,7 @@ DO $$
 DECLARE
   v_user_id UUID;
   v_email TEXT := 'fersuko@gmail.com';
-  v_pass TEXT := 'Clavedirectoriozona1';
+  v_pass TEXT := 'Clavedirectoriozona1.';
 BEGIN
   -- 1. Intentar obtener el ID si ya existe
   SELECT id INTO v_user_id FROM auth.users WHERE email = v_email;

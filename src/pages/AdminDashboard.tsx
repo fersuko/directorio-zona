@@ -251,16 +251,25 @@ export default function AdminDashboard() {
 
     const handleToggleVisibility = async (id: number, currentStatus: boolean) => {
         try {
-            const { error } = await supabase
-                .from("businesses")
-                .upsert({ id, is_hidden: !currentStatus, updated_at: new Date().toISOString() } as any);
+            const business = businesses.find(b => b.id === id);
+            if (!business) return;
+
+            // Use full object for upsert to ensure it exists if it's static
+            const { error } = await (supabase
+                .from("businesses") as any)
+                .upsert({
+                    ...business,
+                    id,
+                    is_hidden: !currentStatus,
+                    updated_at: new Date().toISOString()
+                }, { onConflict: 'id' });
 
             if (error) throw error;
 
             setBusinesses(prev => prev.map(b => b.id === id ? { ...b, isHidden: !currentStatus } : b));
-        } catch (error) {
+        } catch (error: any) {
             console.error("Error toggling visibility:", error);
-            alert("Error al cambiar visibilidad");
+            alert(`Error al cambiar visibilidad: ${error.message || 'Error de base de datos'}`);
         }
     };
 
@@ -298,7 +307,8 @@ export default function AdminDashboard() {
                 error = err;
                 if (!error) setBusinesses(prev => prev.filter(b => b.id !== id));
             } else if (type === 'user') {
-                const { error: err } = await supabase.from("profiles").delete().eq('id', id);
+                // Call the secure admin_delete_user RPC
+                const { error: err } = await (supabase as any).rpc('admin_delete_user', { target_user_id: id });
                 error = err;
                 if (!error) setUsers(prev => prev.filter(u => u.id !== id));
             } else if (type === 'lead') {

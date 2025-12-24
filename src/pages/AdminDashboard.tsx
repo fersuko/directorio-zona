@@ -324,8 +324,11 @@ export default function AdminDashboard() {
             const businessesToSync = businessesData as any[];
 
             for (let i = 0; i < businessesToSync.length; i += batchSize) {
-                const batch = businessesToSync.slice(i, i + batchSize).map(biz => ({
-                    id: biz.id.toString(),
+                const chunk = businessesToSync.slice(i, i + batchSize);
+                console.log(`Sincronizando lote ${i / batchSize + 1}...`);
+
+                const batch = chunk.map(biz => ({
+                    id: biz.id, // Enviar como número ya que la PK es INTEGER
                     name: biz.name,
                     category: biz.category,
                     address: biz.address,
@@ -334,17 +337,20 @@ export default function AdminDashboard() {
                     lng: biz.lng,
                     images: biz.image ? [biz.image] : [],
                     is_premium: biz.isPremium || false,
-                    owner_id: user.id // Default to admin if no owner
+                    owner_id: user.id
                 }));
 
                 const { error } = await (supabase
                     .from("businesses") as any)
                     .upsert(batch, { onConflict: 'id' });
 
-                if (error) throw error;
+                if (error) {
+                    console.error("Error en lote:", error);
+                    throw error;
+                }
             }
 
-            alert("🎉 Migración completada con éxito. Todos los negocios están ahora en la base de datos.");
+            alert(`🎉 ¡Éxito! Se han sincronizado ${businessesToSync.length} negocios correctamente de la base de datos estática.`);
             fetchBusinesses();
         } catch (error) {
             console.error("Error syncing data:", error);

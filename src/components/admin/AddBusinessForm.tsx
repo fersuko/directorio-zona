@@ -39,12 +39,14 @@ export function AddBusinessForm({ onSuccess, onCancel, initialData }: AddBusines
     const [formData, setFormData] = useState({
         name: initialData?.name || "",
         category: initialData?.category || "Restaurante",
+        group_name: (initialData as any)?.group_name || (initialData as any)?.group || "Gastronomía",
         address: initialData?.address || "",
         description: initialData?.description || "",
         lat: initialData?.lat || 25.6667,
         lng: initialData?.lng || -100.3167,
         phone: initialData?.phone || "",
         website: initialData?.website || "",
+        image_url: (initialData as any)?.image_url || (initialData as any)?.image || "",
         plan_id: "free"
     });
 
@@ -328,14 +330,25 @@ export function AddBusinessForm({ onSuccess, onCancel, initialData }: AddBusines
                             value={formData.category}
                             onChange={e => setFormData({ ...formData, category: e.target.value })}
                         >
-                            <option value="Restaurante">Restaurante</option>
-                            <option value="Cafetería">Cafetería</option>
-                            <option value="Bar">Bar</option>
-                            <option value="Tienda">Tienda</option>
-                            <option value="Servicio">Servicio</option>
-                            <option value="Salud">Salud</option>
-                            <option value="Otro">Otro</option>
+                            <option>Restaurante</option>
+                            <option>Cafetería</option>
+                            <option>Bar</option>
+                            <option>Tienda</option>
+                            <option>Servicios</option>
+                            <option>Salud</option>
+                            <option>Otro</option>
                         </select>
+                    </div>
+
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium">Grupo (Giro)</label>
+                        <input
+                            type="text"
+                            className="w-full p-2 bg-muted/50 border border-white/10 rounded-lg focus:ring-2 focus:ring-primary/50 outline-none"
+                            value={formData.group_name}
+                            onChange={e => setFormData({ ...formData, group_name: e.target.value })}
+                            placeholder="Ej: Gastronomía, Salud, Deporte"
+                        />
                     </div>
 
                     <div className="space-y-2 md:col-span-2">
@@ -423,6 +436,17 @@ export function AddBusinessForm({ onSuccess, onCancel, initialData }: AddBusines
                             value={formData.website}
                             onChange={e => setFormData({ ...formData, website: e.target.value })}
                             placeholder="Ej: https://ejemplo.com"
+                        />
+                    </div>
+
+                    <div className="space-y-2 md:col-span-2">
+                        <label className="text-sm font-medium">URL de Imagen (Logo/Banner)</label>
+                        <input
+                            type="url"
+                            className="w-full p-2 bg-muted/50 border border-white/10 rounded-lg focus:ring-2 focus:ring-primary/50 outline-none"
+                            value={formData.image_url}
+                            onChange={e => setFormData({ ...formData, image_url: e.target.value })}
+                            placeholder="Ej: https://unsplash.com/foto..."
                         />
                     </div>
 

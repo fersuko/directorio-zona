@@ -357,14 +357,15 @@ export default function AdminDashboard() {
                 console.log(`Sincronizando lote ${i / batchSize + 1}... (${progress}/${businessesToSync.length})`);
 
                 const batch = chunk.map(biz => ({
-                    id: biz.id, // Enviar como número ya que la PK es INTEGER
+                    id: biz.id,
                     name: biz.name,
                     category: biz.category,
+                    group_name: biz.group,
                     address: biz.address,
                     description: biz.description,
                     lat: biz.lat,
                     lng: biz.lng,
-                    images: biz.image ? [biz.image] : [],
+                    image_url: biz.image || null,
                     is_premium: biz.isPremium || false,
                     owner_id: user.id
                 }));

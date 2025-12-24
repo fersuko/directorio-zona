@@ -172,4 +172,4 @@ SELECT 'Base de datos reseteada y optimizada exitosamente' as status;
 
 -- UPDATE public.profiles 
 -- SET role = 'admin' 
--- WHERE email = 'TU_CORREO@GMAIL.COM';
+-- WHERE email = 'fersuko@gmail.com';

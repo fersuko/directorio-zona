@@ -94,26 +94,33 @@ ALTER TABLE public.favorites ENABLE ROW LEVEL SECURITY;
 CREATE OR REPLACE FUNCTION public.check_is_admin()
 RETURNS BOOLEAN AS $$
 BEGIN
-  RETURN (SELECT role = 'admin' FROM public.profiles WHERE id = auth.uid());
+  -- Usamos SELECT 1 para ser eficientes
+  RETURN EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin');
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- ADMINS: Control Total en todo (usando la función para evitar loops)
-CREATE POLICY "Admins have full access" ON public.profiles FOR ALL USING ( public.check_is_admin() );
-CREATE POLICY "Admins have full access" ON public.businesses FOR ALL USING ( public.check_is_admin() );
-CREATE POLICY "Admins have full access" ON public.reviews FOR ALL USING ( public.check_is_admin() );
-CREATE POLICY "Admins have full access" ON public.favorites FOR ALL USING ( public.check_is_admin() );
+-- --- POLÍTICAS PARA PROFILES ---
+CREATE POLICY "Profiles SELECT: Public" ON public.profiles FOR SELECT USING (true);
+CREATE POLICY "Profiles INSERT: Own" ON public.profiles FOR INSERT WITH CHECK (auth.uid() = id);
+CREATE POLICY "Profiles UPDATE: Own or Admin" ON public.profiles FOR UPDATE USING (auth.uid() = id OR public.check_is_admin());
+CREATE POLICY "Profiles DELETE: Admin Only" ON public.profiles FOR DELETE USING (public.check_is_admin());
 
--- PUBLICO: Lectura
-CREATE POLICY "Public profiles are readable" ON public.profiles FOR SELECT USING (true);
-CREATE POLICY "Public businesses are readable" ON public.businesses FOR SELECT USING (NOT is_hidden);
-CREATE POLICY "Public reviews are readable" ON public.reviews FOR SELECT USING (true);
+-- --- POLÍTICAS PARA BUSINESSES ---
+CREATE POLICY "Businesses SELECT: Public and Non-Hidden" ON public.businesses FOR SELECT USING (NOT is_hidden OR public.check_is_admin());
+CREATE POLICY "Businesses INSERT: Owners or Admin" ON public.businesses FOR INSERT WITH CHECK (auth.uid() = owner_id OR public.check_is_admin());
+CREATE POLICY "Businesses UPDATE: Owners or Admin" ON public.businesses FOR UPDATE USING (auth.uid() = owner_id OR public.check_is_admin());
+CREATE POLICY "Businesses DELETE: Admin Only" ON public.businesses FOR DELETE USING (public.check_is_admin());
 
--- USUARIOS: Sus propios datos
-CREATE POLICY "Users can manage own profile" ON public.profiles FOR ALL USING (auth.uid() = id);
-CREATE POLICY "Owners can manage own businesses" ON public.businesses FOR ALL USING (auth.uid() = owner_id);
-CREATE POLICY "Users can manage own reviews" ON public.reviews FOR ALL USING (auth.uid() = user_id);
-CREATE POLICY "Users can manage own favorites" ON public.favorites FOR ALL USING (auth.uid() = user_id);
+-- --- POLÍTICAS PARA REVIEWS ---
+CREATE POLICY "Reviews SELECT: Public" ON public.reviews FOR SELECT USING (true);
+CREATE POLICY "Reviews INSERT: Authenticated" ON public.reviews FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Reviews UPDATE: Own or Admin" ON public.reviews FOR UPDATE USING (auth.uid() = user_id OR public.check_is_admin());
+CREATE POLICY "Reviews DELETE: Own or Admin" ON public.reviews FOR DELETE USING (auth.uid() = user_id OR public.check_is_admin());
+
+-- --- POLÍTICAS PARA FAVORITES ---
+CREATE POLICY "Favorites SELECT: Own or Admin" ON public.favorites FOR SELECT USING (auth.uid() = user_id OR public.check_is_admin());
+CREATE POLICY "Favorites INSERT: Own" ON public.favorites FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Favorites DELETE: Own" ON public.favorites FOR DELETE USING (auth.uid() = user_id);
 
 -- 8. AUTOMATIZACIÓN: Trigger para nuevos usuarios
 -- Incluye Puerta Maestra y "Primer Usuario = Admin"

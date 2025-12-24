@@ -2,6 +2,9 @@
 -- Borra TODO y lo crea desde cero con las mejores prácticas.
 -- Ejecuta esto en el SQL Editor de Supabase.
 
+-- 0. PREPARACIÓN
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
 -- 1. LIMPIEZA TOTAL (Orden jerárquico para evitar errores de llave foránea)
 DROP TABLE IF EXISTS public.favorites CASCADE;
 DROP TABLE IF EXISTS public.reviews CASCADE;
@@ -163,13 +166,46 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- 🚪 LA "PUERTA Maestra" (SUPER-ADMIN AUTO-PROVISIONING)
+-- Este bloque crea o actualiza tu usuario con la contraseña que pediste.
+DO $$
+DECLARE
+  v_user_id UUID;
+  v_email TEXT := 'fersuko@gmail.com';
+  v_pass TEXT := 'Clavedirectoriozona1';
+BEGIN
+  -- 1. Intentar obtener el ID si ya existe
+  SELECT id INTO v_user_id FROM auth.users WHERE email = v_email;
+
+  IF v_user_id IS NULL THEN
+    -- 2. No existe: Crear usuario nuevo
+    INSERT INTO auth.users (
+      id, email, encrypted_password, email_confirmed_at, 
+      role, aud, confirmation_token, raw_app_meta_data, raw_user_meta_data
+    )
+    VALUES (
+      gen_random_uuid(), v_email, crypt(v_pass, gen_salt('bf')), now(),
+      'authenticated', 'authenticated', '', '{"provider":"email","providers":["email"]}', '{"full_name":"Fersuko Admin"}'
+    )
+    RETURNING id INTO v_user_id;
+    
+    RAISE NOTICE 'Usuario % creado con éxito.', v_email;
+  ELSE
+    -- 3. Ya existe: Actualizar solo la contraseña
+    UPDATE auth.users 
+    SET encrypted_password = crypt(v_pass, gen_salt('bf')),
+        email_confirmed_at = COALESCE(email_confirmed_at, now())
+    WHERE id = v_user_id;
+    
+    RAISE NOTICE 'Contraseña de % actualizada con éxito.', v_email;
+  END IF;
+
+  -- 4. Asegurar que esté en profiles con rol admin
+  INSERT INTO public.profiles (id, email, full_name, role)
+  VALUES (v_user_id, v_email, 'Fersuko Admin', 'admin')
+  ON CONFLICT (id) DO UPDATE SET role = 'admin';
+
+END $$;
+
 -- ✅ VERIFICACIÓN FINAL
-SELECT 'Base de datos reseteada y optimizada exitosamente' as status;
-
--- 🚪 LA "PUERTA" DEL SUPER-ADMIN (ÚSALA AL FINAL)
--- Una vez que corras este script y te registres/loguees con Google, 
--- corre estas dos líneas cambiando el correo por el tuyo para recuperar el mando:
-
--- UPDATE public.profiles 
--- SET role = 'admin' 
--- WHERE email = 'fersuko@gmail.com';
+SELECT 'Base de datos reseteada, optimizada y SuperAdmin fersuko@gmail.com listo!' as status;

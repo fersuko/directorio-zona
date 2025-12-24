@@ -36,6 +36,7 @@ export default function AdminDashboard() {
     const [transferData, setTransferData] = useState<{ isOpen: boolean; businessId?: number; businessName?: string }>({ isOpen: false });
     const [deleteConfirm, setDeleteConfirm] = useState<{ type: 'business' | 'user' | 'lead'; id: any; name: string } | null>(null);
     const [isSyncing, setIsSyncing] = useState(false);
+    const [syncProgress, setSyncProgress] = useState(0);
 
     // Filters State
     const [searchTerm, setSearchTerm] = useState("");
@@ -179,27 +180,42 @@ export default function AdminDashboard() {
 
     const handleChangePlan = async (id: number, newPlanId: string) => {
         try {
-            const { error } = await supabase
-                .from("businesses")
+            const business = businesses.find(b => b.id === id);
+            if (!business) return;
+
+            // Prepare object for UPSERT
+            // If it's a static business not in DB yet, we send all fields to create it.
+            // If it's already in DB, upsert will update only provided fields (or all if we send all).
+            const isPremiumPlan = newPlanId === 'launch' || newPlanId === 'featured';
+
+            const { error } = await (supabase
+                .from("businesses") as any)
                 .upsert({
-                    id,
+                    id: business.id,
+                    name: business.name,
+                    category: business.category,
+                    address: business.address,
+                    description: business.description,
+                    lat: business.lat,
+                    lng: business.lng,
                     plan_id: newPlanId,
+                    is_premium: isPremiumPlan,
+                    owner_id: business.ownerId || (await supabase.auth.getUser()).data.user?.id,
                     updated_at: new Date().toISOString()
-                } as any);
+                }, { onConflict: 'id' });
 
             if (error) throw error;
 
             setBusinesses(prev => prev.map(b => {
                 if (b.id === id) {
-                    const isPremiumPlan = newPlanId === 'launch' || newPlanId === 'featured';
                     return { ...b, planId: newPlanId as any, isPremium: isPremiumPlan };
                 }
                 return b;
             }));
 
-        } catch (error) {
+        } catch (error: any) {
             console.error("Error changing plan:", error);
-            alert("Error al actualizar el plan");
+            alert(`Error al actualizar el plan: ${error.message || 'Error de base de datos'}`);
         }
     };
 
@@ -315,6 +331,7 @@ export default function AdminDashboard() {
         if (!window.confirm("⚠️ ¿Estás seguro de sincronizar los datos del JSON? \n\nEsto subirá todos los negocios del archivo a la base de datos de producción. Solo hazlo una vez para migrar.")) return;
 
         setIsSyncing(true);
+        setSyncProgress(0);
         try {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return;
@@ -325,7 +342,9 @@ export default function AdminDashboard() {
 
             for (let i = 0; i < businessesToSync.length; i += batchSize) {
                 const chunk = businessesToSync.slice(i, i + batchSize);
-                console.log(`Sincronizando lote ${i / batchSize + 1}...`);
+                const progress = Math.min(i + batchSize, businessesToSync.length);
+                setSyncProgress(progress);
+                console.log(`Sincronizando lote ${i / batchSize + 1}... (${progress}/${businessesToSync.length})`);
 
                 const batch = chunk.map(biz => ({
                     id: biz.id, // Enviar como número ya que la PK es INTEGER
@@ -352,9 +371,9 @@ export default function AdminDashboard() {
 
             alert(`🎉 ¡Éxito! Se han sincronizado ${businessesToSync.length} negocios correctamente de la base de datos estática.`);
             fetchBusinesses();
-        } catch (error) {
+        } catch (error: any) {
             console.error("Error syncing data:", error);
-            alert("Hubo un error durante la migración. Revisa la consola.");
+            alert(`❌ Error durante la migración: ${error.message || 'Error desconocido'}\n\nRevisa la consola para más detalles.`);
         } finally {
             setIsSyncing(false);
         }
@@ -419,7 +438,7 @@ export default function AdminDashboard() {
                         disabled={isSyncing}
                         className="text-orange-400 hover:text-orange-300 hover:bg-orange-400/10"
                     >
-                        {isSyncing ? "Sincronizando..." : "Sincronizar JSON → DB"}
+                        {isSyncing ? `Sincronizando (${syncProgress}/${businessesData.length})...` : "Sincronizar JSON → DB"}
                     </Button>
                     <Button variant="ghost" size="sm" onClick={handleLogout}>
                         <LogOut className="w-4 h-4 mr-2" />

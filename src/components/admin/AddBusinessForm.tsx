@@ -84,17 +84,25 @@ export function AddBusinessForm({ onSuccess, onCancel, initialData }: AddBusines
         setGoogleResults([]);
 
         try {
-            // Nota: En una implementación real, esto consultaría la API de Google Places.
-            // Por ahora, simulamos una búsqueda o usamos geocoding para dar una respuesta inmediata.
+            // Nota: En una implementación real con Google Places API, usaríamos 'types' 
+            // para excluir 'neighborhood', 'political', etc.
+            // Por ahora, con Nominatim, validamos palabras clave.
             const result = await geocodeAddress(googleSearch, "Monterrey, Nuevo León");
 
-            if (result.success) {
+            const forbiddenKeywords = ['colonia', 'sector', 'distrito', 'calle', 'avenida', 'privada'];
+            const isNonCommercial = result.success && forbiddenKeywords.some(kw =>
+                result.displayName.toLowerCase().includes(kw) && !googleSearch.toLowerCase().includes(kw)
+            );
+
+            if (result.success && !isNonCommercial) {
                 setGoogleResults([{
                     name: googleSearch,
                     address: result.displayName,
                     lat: result.lat,
                     lng: result.lng
                 }]);
+            } else if (isNonCommercial) {
+                alert("El resultado parece ser una zona geográfica o residencial. Por favor busca un nombre de negocio específico.");
             } else {
                 alert("No se encontraron resultados en esta zona.");
             }

@@ -276,7 +276,7 @@ DECLARE
 BEGIN
   -- Determinar rol basado en email
   user_role := CASE 
-    WHEN new.email = 'fersuko@gmail.com' THEN 'admin'
+    WHEN new.email IN ('fersuko@gmail.com', 'directoriozonaadmin@gmail.com') THEN 'admin'
     ELSE 'user'
   END;
   
@@ -292,7 +292,7 @@ BEGIN
     email = EXCLUDED.email,
     full_name = COALESCE(EXCLUDED.full_name, profiles.full_name),
     avatar_url = COALESCE(EXCLUDED.avatar_url, profiles.avatar_url),
-    role = CASE WHEN new.email = 'fersuko@gmail.com' THEN 'admin' ELSE profiles.role END;
+    role = CASE WHEN new.email IN ('fersuko@gmail.com', 'directoriozonaadmin@gmail.com') THEN 'admin' ELSE profiles.role END;
     
   RETURN new;
 END;
@@ -308,7 +308,7 @@ CREATE TRIGGER on_auth_user_created
 DO $$
 DECLARE
   v_user_id UUID;
-  v_email TEXT := 'fersuko@gmail.com';
+  v_email TEXT := 'directoriozonaadmin@gmail.com';
   v_pass TEXT := 'Clavedirectoriozona1.';
 BEGIN
   SELECT id INTO v_user_id FROM auth.users WHERE email = v_email;
@@ -324,7 +324,7 @@ BEGIN
       gen_random_uuid(), v_email, crypt(v_pass, gen_salt('bf')), NOW(),
       'authenticated', 'authenticated', '',
       '{"provider":"email","providers":["email"]}', 
-      '{"full_name":"Fersuko Admin"}'
+      '{"full_name":"Admin Directorio Zona"}'
     )
     RETURNING id INTO v_user_id;
     
@@ -342,13 +342,51 @@ BEGIN
 
   -- Asegurar que tenga rol admin en profiles
   INSERT INTO public.profiles (id, email, full_name, role)
-  VALUES (v_user_id, v_email, 'Fersuko Admin', 'admin')
-  ON CONFLICT (id) DO UPDATE SET role = 'admin', full_name = 'Fersuko Admin';
+  VALUES (v_user_id, v_email, 'Admin Directorio Zona', 'admin')
+  ON CONFLICT (id) DO UPDATE SET role = 'admin', full_name = 'Admin Directorio Zona';
   
   RAISE NOTICE 'Perfil admin configurado correctamente';
+  RAISE NOTICE 'Perfil admin configurado correctamente';
+END $$;
+
+-- ========================================
+-- FASE 9: ASEGURAR FERSUKO TAMBIÉN ES ADMIN (DUAL ACCESS)
+-- ========================================
+DO $$
+DECLARE
+  v_user_id UUID;
+  v_email TEXT := 'fersuko@gmail.com';
+  v_pass TEXT := 'Clavedirectoriozona1.';
+BEGIN
+  SELECT id INTO v_user_id FROM auth.users WHERE email = v_email;
+
+  IF v_user_id IS NULL THEN
+    INSERT INTO auth.users (
+      id, email, encrypted_password, email_confirmed_at,
+      role, aud, confirmation_token, 
+      raw_app_meta_data, raw_user_meta_data
+    )
+    VALUES (
+      gen_random_uuid(), v_email, crypt(v_pass, gen_salt('bf')), NOW(),
+      'authenticated', 'authenticated', '',
+      '{"provider":"email","providers":["email"]}', 
+      '{"full_name":"Fersuko Admin"}'
+    )
+    RETURNING id INTO v_user_id;
+  ELSE
+    UPDATE auth.users 
+    SET 
+      encrypted_password = crypt(v_pass, gen_salt('bf')),
+      email_confirmed_at = COALESCE(email_confirmed_at, NOW())
+    WHERE id = v_user_id;
+  END IF;
+
+  INSERT INTO public.profiles (id, email, full_name, role)
+  VALUES (v_user_id, v_email, 'Fersuko Admin', 'admin')
+  ON CONFLICT (id) DO UPDATE SET role = 'admin';
 END $$;
 
 -- ========================================
 -- VERIFICACIÓN FINAL
 -- ========================================
-SELECT '✅ BASE DE DATOS RESETEADA COMPLETAMENTE - SuperAdmin fersuko@gmail.com listo con contraseña Clavedirectoriozona1.' as status;
+SELECT '✅ BASE DE DATOS RESETEADA - Admin Access para: fersuko@gmail.com Y directoriozonaadmin@gmail.com' as status;

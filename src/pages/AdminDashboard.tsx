@@ -35,6 +35,7 @@ export default function AdminDashboard() {
     const [editingBusiness, setEditingBusiness] = useState<Business | null>(null);
     const [transferData, setTransferData] = useState<{ isOpen: boolean; businessId?: number; businessName?: string }>({ isOpen: false });
     const [deleteConfirm, setDeleteConfirm] = useState<{ type: 'business' | 'user' | 'lead'; id: any; name: string } | null>(null);
+    const [isSyncing, setIsSyncing] = useState(false);
 
     // Filters State
     const [searchTerm, setSearchTerm] = useState("");
@@ -310,6 +311,49 @@ export default function AdminDashboard() {
         navigate("/admin/login");
     };
 
+    const handleSyncData = async () => {
+        if (!window.confirm("⚠️ ¿Estás seguro de sincronizar los datos del JSON? \n\nEsto subirá todos los negocios del archivo a la base de datos de producción. Solo hazlo una vez para migrar.")) return;
+
+        setIsSyncing(true);
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+
+            // Prepare batches of 50 to avoid timeouts
+            const batchSize = 50;
+            const businessesToSync = businessesData as any[];
+
+            for (let i = 0; i < businessesToSync.length; i += batchSize) {
+                const batch = businessesToSync.slice(i, i + batchSize).map(biz => ({
+                    id: biz.id.toString(),
+                    name: biz.name,
+                    category: biz.category,
+                    address: biz.address,
+                    description: biz.description,
+                    lat: biz.lat,
+                    lng: biz.lng,
+                    images: biz.image ? [biz.image] : [],
+                    is_premium: biz.isPremium || false,
+                    owner_id: user.id // Default to admin if no owner
+                }));
+
+                const { error } = await (supabase
+                    .from("businesses") as any)
+                    .upsert(batch, { onConflict: 'id' });
+
+                if (error) throw error;
+            }
+
+            alert("🎉 Migración completada con éxito. Todos los negocios están ahora en la base de datos.");
+            fetchBusinesses();
+        } catch (error) {
+            console.error("Error syncing data:", error);
+            alert("Hubo un error durante la migración. Revisa la consola.");
+        } finally {
+            setIsSyncing(false);
+        }
+    };
+
     const filteredBusinesses = useMemo(() => {
         return businesses.filter(b => {
             const matchesSearch = searchTerm === "" ||
@@ -361,10 +405,21 @@ export default function AdminDashboard() {
                         <p className="text-xs text-muted-foreground">Gestión total del directorio</p>
                     </div>
                 </div>
-                <Button variant="ghost" size="sm" onClick={handleLogout}>
-                    <LogOut className="w-4 h-4 mr-2" />
-                    Salir
-                </Button>
+                <div className="flex items-center gap-2">
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleSyncData}
+                        disabled={isSyncing}
+                        className="text-orange-400 hover:text-orange-300 hover:bg-orange-400/10"
+                    >
+                        {isSyncing ? "Sincronizando..." : "Sincronizar JSON → DB"}
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={handleLogout}>
+                        <LogOut className="w-4 h-4 mr-2" />
+                        Salir
+                    </Button>
+                </div>
             </div>
 
             <div className="container mx-auto px-6 py-8 space-y-6">

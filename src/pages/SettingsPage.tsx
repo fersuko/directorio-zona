@@ -5,9 +5,10 @@ import { ArrowLeft, Bell, User, ChevronRight, Moon, LogOut, Save, Loader2, Chevr
 import { supabase } from "../lib/supabase";
 import { Button } from "../components/ui/Button";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
+import { useTheme } from "../context/ThemeContext";
 
 type SettingItem =
-    | { id?: string; type: 'toggle'; icon: React.ReactNode; label: string; value: boolean; onChange: () => void; onClick?: undefined; danger?: undefined }
+    | { id?: string; type: 'toggle' | 'select'; icon: React.ReactNode; label: string; value?: any; onChange?: (val?: any) => void; onClick?: () => void; danger?: boolean; options?: { label: string, value: string }[] }
     | { id?: string; type: 'link'; icon: React.ReactNode; label: string; onClick: () => void; value?: undefined; onChange?: undefined; danger?: undefined }
     | { id?: string; type: 'button'; icon: React.ReactNode; label: string; onClick: () => void; danger: boolean; value?: undefined; onChange?: undefined }
     | { id?: string; type: 'expandable'; icon: React.ReactNode; label: string; onClick: () => void; isOpen: boolean; danger?: undefined; value?: undefined; onChange?: undefined };
@@ -19,7 +20,7 @@ interface SettingSection {
 
 export default function SettingsPage() {
     const navigate = useNavigate();
-    const [darkMode, setDarkMode] = useState(true);
+    const { theme, setTheme, fontSize, setFontSize } = useTheme();
 
     // Profile Data
     const [profile, setProfile] = useState<any>(null);
@@ -177,21 +178,43 @@ export default function SettingsPage() {
 
     const sections: SettingSection[] = [
         {
-            title: "Preferencias",
+            title: "Preferencias de Interfaz",
+            items: [
+                {
+                    type: "select",
+                    icon: <Moon className="w-5 h-5 text-purple-400" />,
+                    label: "Tema de la App",
+                    value: theme,
+                    onChange: (val) => setTheme(val as any),
+                    options: [
+                        { label: "Claro", value: "light" },
+                        { label: "Oscuro", value: "dark" },
+                        { label: "Sistema", value: "system" }
+                    ]
+                },
+                {
+                    type: "select",
+                    icon: <User className="w-5 h-5 text-blue-400" />,
+                    label: "Tamaño de Letra",
+                    value: fontSize,
+                    onChange: (val) => setFontSize(val as any),
+                    options: [
+                        { label: "Pequeño", value: "sm" },
+                        { label: "Normal", value: "base" },
+                        { label: "Grande", value: "lg" }
+                    ]
+                }
+            ]
+        },
+        {
+            title: "Notificaciones",
             items: [
                 {
                     type: "toggle",
-                    icon: <Bell className="w-5 h-5 text-blue-400" />,
+                    icon: <Bell className="w-5 h-5 text-yellow-400" />,
                     label: "Notificaciones Push",
                     value: notificationsEnabled,
                     onChange: handleToggleNotifications
-                },
-                {
-                    type: "toggle",
-                    icon: <Moon className="w-5 h-5 text-purple-400" />,
-                    label: "Modo Oscuro",
-                    value: darkMode,
-                    onChange: () => setDarkMode(!darkMode)
                 }
             ]
         },
@@ -279,9 +302,22 @@ export default function SettingsPage() {
                                         {item.type === 'toggle' && (
                                             <div
                                                 className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer ${item.value ? 'bg-primary' : 'bg-muted'}`}
+                                                onClick={item.onChange as any}
                                             >
                                                 <div className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform ${item.value ? 'translate-x-5' : ''}`} />
                                             </div>
+                                        )}
+
+                                        {item.type === 'select' && (
+                                            <select
+                                                className="bg-muted/50 border border-white/10 rounded-lg px-2 py-1 text-xs focus:ring-1 focus:ring-primary focus:outline-none"
+                                                value={item.value}
+                                                onChange={(e) => item.onChange?.(e.target.value)}
+                                            >
+                                                {item.options?.map(opt => (
+                                                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                                ))}
+                                            </select>
                                         )}
 
                                         {(item.type === 'link' || item.type === 'button') && (

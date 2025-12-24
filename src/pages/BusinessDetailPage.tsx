@@ -138,7 +138,7 @@ export default function BusinessDetailPage() {
         }
     };
 
-    const handleSubmitReview = async (rating: number, comment: string) => {
+    const handleSubmitReview = async (rating: number, comment: string, metrics?: { quality_price: number, service: number, product_quality: number }) => {
         if (!id) return;
         setSubmittingReview(true);
         try {
@@ -156,7 +156,10 @@ export default function BusinessDetailPage() {
                     business_id: id,
                     user_id: user.id,
                     rating,
-                    comment
+                    comment,
+                    rating_quality: metrics?.product_quality,
+                    rating_price: metrics?.quality_price,
+                    rating_service: metrics?.service
                 } as any);
 
             if (error) throw error;
@@ -474,6 +477,26 @@ export default function BusinessDetailPage() {
                                         </span>
                                     </div>
                                     <p className="text-sm text-muted-foreground">{review.comment}</p>
+
+                                    {/* Metrics Display */}
+                                    {(review.rating_quality || review.rating_price || review.rating_service) && (
+                                        <div className="grid grid-cols-3 gap-2 pt-2 border-t border-white/5">
+                                            {[
+                                                { label: "Calidad", val: review.rating_quality },
+                                                { label: "Precio", val: review.rating_price },
+                                                { label: "Servicio", val: review.rating_service }
+                                            ].map((m, i) => m.val ? (
+                                                <div key={i} className="flex flex-col gap-0.5">
+                                                    <span className="text-[10px] text-muted-foreground uppercase tracking-wider">{m.label}</span>
+                                                    <div className="flex gap-0.5">
+                                                        {[...Array(5)].map((_, si) => (
+                                                            <div key={si} className={`h-1 flex-1 rounded-full ${si < m.val ? 'bg-primary/60' : 'bg-white/5'}`} />
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            ) : null)}
+                                        </div>
+                                    )}
                                 </div>
                             ))
                         )}

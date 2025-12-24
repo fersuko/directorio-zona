@@ -7,18 +7,25 @@ interface ReviewModalProps {
     isOpen: boolean;
     onClose: () => void;
     businessName: string;
-    onSubmit: (rating: number, comment: string) => Promise<void>;
+    onSubmit: (rating: number, comment: string, metrics?: { quality_price: number, service: number, product_quality: number }) => Promise<void>;
     isSubmitting?: boolean;
 }
 
 export function ReviewModal({ isOpen, onClose, businessName, onSubmit, isSubmitting = false }: ReviewModalProps) {
     const [rating, setRating] = useState(0);
+    const [ratingQuality, setRatingQuality] = useState(0);
+    const [ratingPrice, setRatingPrice] = useState(0);
+    const [ratingService, setRatingService] = useState(0);
     const [comment, setComment] = useState("");
     const [hoveredRating, setHoveredRating] = useState(0);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        await onSubmit(rating, comment);
+        await onSubmit(rating, comment, {
+            quality_price: ratingPrice,
+            service: ratingService,
+            product_quality: ratingQuality
+        });
         // Reset only on successful submission? 
         // Typically handled by parent closing modal or we can reset here.
         // For now, consistent with previous behavior but waiting for submit.
@@ -87,8 +94,8 @@ export function ReviewModal({ isOpen, onClose, businessName, onSubmit, isSubmitt
                                             >
                                                 <Star
                                                     className={`w-9 h-9 transition-colors ${star <= (hoveredRating || rating)
-                                                            ? "fill-yellow-400 text-yellow-400"
-                                                            : "text-muted-foreground/30"
+                                                        ? "fill-yellow-400 text-yellow-400"
+                                                        : "text-muted-foreground/30"
                                                         }`}
                                                 />
                                             </button>
@@ -97,6 +104,36 @@ export function ReviewModal({ isOpen, onClose, businessName, onSubmit, isSubmitt
                                     <p className={`text-sm font-medium transition-all ${rating > 0 ? "text-primary" : "text-muted-foreground"}`}>
                                         {getRatingLabel(hoveredRating || rating)}
                                     </p>
+                                </div>
+
+                                {/* Multi-metrics */}
+                                <div className="space-y-4 py-2 border-y border-white/5">
+                                    <h3 className="text-sm font-bold text-center">Detalles de tu experiencia</h3>
+
+                                    <div className="space-y-4">
+                                        {[
+                                            { label: "Calidad del Producto/Lugar", value: ratingQuality, setter: setRatingQuality },
+                                            { label: "Relación Calidad/Precio", value: ratingPrice, setter: setRatingPrice },
+                                            { label: "Servicio y Atención", value: ratingService, setter: setRatingService },
+                                        ].map((metric, idx) => (
+                                            <div key={idx} className="flex flex-col gap-1">
+                                                <div className="flex justify-between items-center">
+                                                    <span className="text-xs text-muted-foreground">{metric.label}</span>
+                                                    <span className="text-xs font-bold text-primary">{metric.value}/5</span>
+                                                </div>
+                                                <div className="flex gap-2">
+                                                    {[1, 2, 3, 4, 5].map((s) => (
+                                                        <button
+                                                            key={s}
+                                                            type="button"
+                                                            onClick={() => metric.setter(s)}
+                                                            className={`h-1.5 flex-1 rounded-full transition-colors ${s <= metric.value ? 'bg-primary' : 'bg-muted'}`}
+                                                        />
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
 
                                 <div className="space-y-2">

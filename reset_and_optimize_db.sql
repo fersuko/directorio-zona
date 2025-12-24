@@ -1,7 +1,10 @@
 -- 🔥 SCRIPT DE REPARACIÓN PROFUNDA (RESET Y OPTIMIZACIÓN)
 -- Ejecuta esto en el SQL Editor de Supabase
 
--- 1. Eliminar la tabla actual (limpieza total solicitada)
+-- 1. Reparar perfiles: Asegurar UNICIDAD de Email para evitar duplicados entre Google/Email
+ALTER TABLE public.profiles ADD CONSTRAINT unique_email UNIQUE (email);
+
+-- 2. Eliminar la tabla actual de negocios (limpieza total solicitada)
 DROP TABLE IF EXISTS public.businesses CASCADE;
 
 -- 2. Recrear la tabla con el tipo de dato correcto para IDs grandes (BIGINT)
@@ -49,6 +52,21 @@ CREATE POLICY "Admins have full control" ON public.businesses
 CREATE POLICY "Owners can update their own businesses" ON public.businesses
     FOR UPDATE
     USING (auth.uid() = owner_id);
+
+-- 7. REPARACIÓN DE RESEÑAS: Sistema Multi-métrica (Calidad, Precio, Servicio)
+ALTER TABLE public.reviews 
+ADD COLUMN IF NOT EXISTS rating_quality INTEGER CHECK (rating_quality >= 1 AND rating_quality <= 5),
+ADD COLUMN IF NOT EXISTS rating_price INTEGER CHECK (rating_price >= 1 AND rating_price <= 5),
+ADD COLUMN IF NOT EXISTS rating_service INTEGER CHECK (rating_service >= 1 AND rating_service <= 5);
+
+-- 8. Restricción: Solo usuarios registrados pueden dejar reseñas (ya manejado por referencial a auth.users, 
+-- pero reforzamos política RLS)
+DROP POLICY IF EXISTS "Users can create reviews" ON public.reviews;
+CREATE POLICY "Registered users can create reviews" ON public.reviews
+  FOR INSERT WITH CHECK (
+    auth.uid() IS NOT NULL AND 
+    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid())
+  );
 
 -- ✅ Verificación
 SELECT 'Tabla businesses recreada exitosamente' as status;

@@ -276,7 +276,7 @@ DECLARE
 BEGIN
   -- Determinar rol basado en email
   user_role := CASE 
-    WHEN new.email IN ('fersuko@gmail.com', 'directoriozonaadmin@gmail.com') THEN 'admin'
+    WHEN new.email IN ('fersuko@gmail.com', 'directoriozona@gmail.com') THEN 'admin'
     ELSE 'user'
   END;
   
@@ -292,7 +292,7 @@ BEGIN
     email = EXCLUDED.email,
     full_name = COALESCE(EXCLUDED.full_name, profiles.full_name),
     avatar_url = COALESCE(EXCLUDED.avatar_url, profiles.avatar_url),
-    role = CASE WHEN new.email IN ('fersuko@gmail.com', 'directoriozonaadmin@gmail.com') THEN 'admin' ELSE profiles.role END;
+    role = CASE WHEN new.email IN ('fersuko@gmail.com', 'directoriozona@gmail.com') THEN 'admin' ELSE profiles.role END;
     
   RETURN new;
 END;
@@ -308,9 +308,13 @@ CREATE TRIGGER on_auth_user_created
 DO $$
 DECLARE
   v_user_id UUID;
-  v_email TEXT := 'directoriozonaadmin@gmail.com';
+  v_email TEXT := 'directoriozona@gmail.com';
   v_pass TEXT := 'Clavedirectoriozona1.';
 BEGIN
+  -- Cleanup: Eliminar el usuario incorrecto si existe
+  DELETE FROM auth.users WHERE email = 'directoriozonaadmin@gmail.com';
+  DELETE FROM public.profiles WHERE email = 'directoriozonaadmin@gmail.com';
+
   SELECT id INTO v_user_id FROM auth.users WHERE email = v_email;
 
   IF v_user_id IS NULL THEN
@@ -389,4 +393,4 @@ END $$;
 -- ========================================
 -- VERIFICACIÓN FINAL
 -- ========================================
-SELECT '✅ BASE DE DATOS RESETEADA - Admin Access para: fersuko@gmail.com Y directoriozonaadmin@gmail.com' as status;
+SELECT '✅ BASE DE DATOS RESETEADA - Admin Access para: fersuko@gmail.com Y directoriozona@gmail.com' as status;

@@ -45,9 +45,12 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     useEffect(() => {
         const root = window.document.documentElement;
         // Handle Font Size
-        root.classList.remove('text-sm-base', 'text-base-base', 'text-lg-base');
-        // Using custom classes that we will define in index.css
-        root.style.fontSize = fontSize === 'sm' ? '14px' : fontSize === 'lg' ? '18px' : '16px';
+        const sizeMap = {
+            sm: '14px',
+            base: '16px',
+            lg: '18px'
+        };
+        root.style.setProperty('--font-size-base', sizeMap[fontSize] || '16px');
         localStorage.setItem('fontSize', fontSize);
     }, [fontSize]);
 

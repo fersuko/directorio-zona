@@ -7,21 +7,27 @@ import { AdminBusinessTable } from "../components/admin/AdminBusinessTable";
 import { LeadsTable } from "../components/admin/LeadsTable";
 import { AddBusinessForm } from "../components/admin/AddBusinessForm";
 import { UserTable } from "../components/admin/UserTable";
+import { SmartIngestion } from "../components/admin/SmartIngestion";
+import { ReviewModeration } from "../components/admin/ReviewModeration";
 import { StatsCard } from "../components/dashboard/StatsCard";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 import { TransferOwnershipModal } from "../components/admin/TransferOwnershipModal";
+import { AnalyticsDashboard } from "../components/admin/AnalyticsDashboard";
 import { supabase } from "../lib/supabase";
-import businessesData from "../data/businesses.json";
+import { useAuth } from "../context/AuthContext";
 import type { Business } from "../types";
 
 export default function AdminDashboard() {
     const navigate = useNavigate();
+    const { user, profile } = useAuth();
     const [loading, setLoading] = useState(true);
+    const [loadingStep, setLoadingStep] = useState<string>("Verificando permisos...");
     const [accessDenied, setAccessDenied] = useState(false);
 
     // Data State
     const [businesses, setBusinesses] = useState<Business[]>([]);
     const [users, setUsers] = useState<any[]>([]);
+    const [currentUser, setCurrentUser] = useState<any>(null);
     const [stats, setStats] = useState({
         scannedBusinesses: 0,
         totalLeads: 0,
@@ -30,62 +36,62 @@ export default function AdminDashboard() {
     });
 
     // UI State
-    const [activeTab, setActiveTab] = useState<'businesses' | 'leads' | 'users' | 'add'>('businesses');
+    const [activeTab, setActiveTab] = useState<'analytics' | 'businesses' | 'leads' | 'users' | 'reviews' | 'add' | 'ingesta'>('businesses');
     const [leadToConvert, setLeadToConvert] = useState<any>(null);
     const [editingBusiness, setEditingBusiness] = useState<Business | null>(null);
-    const [transferData, setTransferData] = useState<{ isOpen: boolean; businessId?: number; businessName?: string }>({ isOpen: false });
+    const [transferData, setTransferData] = useState<{ isOpen: boolean; businessId?: string; businessName?: string }>({ isOpen: false });
     const [deleteConfirm, setDeleteConfirm] = useState<{ type: 'business' | 'user' | 'lead'; id: any; name: string } | null>(null);
-    const [isSyncing, setIsSyncing] = useState(false);
-    const [syncProgress, setSyncProgress] = useState(0);
 
     // Filters State
     const [searchTerm, setSearchTerm] = useState("");
-    const [filterPlan, setFilterPlan] = useState<'all' | 'free' | 'launch' | 'featured'>('all');
+    const [filterPlan, setFilterPlan] = useState<'all' | 'free' | 'exchange' | 'premium' | 'launch' | 'featured'>('all');
     const [filterStatus, setFilterStatus] = useState<'all' | 'published' | 'hidden'>('all');
 
+    // Simplified auth check using AuthContext
     useEffect(() => {
-        checkAdminAndFetchData();
-    }, []);
-
-    const checkAdminAndFetchData = async () => {
-        try {
-            const { data: { user } } = await supabase.auth.getUser();
-
-            if (!user) {
-                navigate("/admin/login");
-                return;
-            }
-
-            // Check admin role using secure RPC to avoid RLS hangs
-            const { data: role, error: roleError } = await supabase.rpc('get_my_role');
-
-            if (roleError || role !== 'admin') {
-                console.error("Access denied or API error:", roleError);
-                setAccessDenied(true);
-                setLoading(false);
-                return;
-            }
-
-            // Legacy profile check removed in favor of RPC
-
-            setAccessDenied(true);
-            setLoading(false);
-            // If we reach here, the user is an admin.
-            setAccessDenied(false); // Corrected: Should be false if admin.
-
-            await Promise.all([
-                fetchBusinesses(),
-                fetchStats(),
-                fetchUsers()
-            ]);
-
-            setLoading(false);
-        } catch (err) {
-            console.error("Unexpected error in AdminDashboard:", err);
-            setAccessDenied(true);
-            setLoading(false);
+        // If no user, redirect to login
+        if (!user) {
+            navigate("/admin/login");
+            return;
         }
-    };
+
+        // Wait for profile to load before checking role
+        if (profile === null) {
+            console.log("[AdminDashboard] Waiting for profile to load...");
+            return;
+        }
+
+        // Check role from profile (already loaded by AuthContext)
+        if (profile.role !== 'admin') {
+            console.log("[AdminDashboard] Access denied. Role:", profile.role);
+            setAccessDenied(true);
+            setLoading(false);
+            return;
+        }
+
+        // User is admin, load dashboard data
+        const loadDashboardData = async () => {
+            try {
+                setCurrentUser(user);
+                setLoadingStep("Cargando datos del sistema...");
+
+                await Promise.all([
+                    fetchBusinesses(),
+                    fetchStats(),
+                    fetchUsers()
+                ]);
+
+                console.log("[AdminDashboard] Data loaded successfully");
+            } catch (error) {
+                console.error("[AdminDashboard] Error loading data:", error);
+                setLoadingStep("Error al cargar datos.");
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        loadDashboardData();
+    }, [user, profile, navigate]);
 
     const fetchStats = async () => {
         try {
@@ -125,58 +131,30 @@ export default function AdminDashboard() {
                 return;
             }
 
-            // ONLY show database data. Do not merge with local JSON.
-            // This prevents "ghost" data from appearing after a reset.
-            setBusinesses(dbBusinesses || []);
-            setStats(prev => ({ ...prev, scannedBusinesses: (dbBusinesses || []).length }));
+            // Map DB data (snake_case) to Frontend model (camelCase)
+            // We keep the original object (...b) so hidden fields like group_name or plan_id
+            // are available for the editing form.
+            const mapped = (dbBusinesses as any[] || []).map(b => ({
+                ...b,
+                ownerId: b.owner_id,
+                planId: b.plan_id,
+                isPremium: b.is_premium,
+                isHidden: b.is_hidden,
+                group: b.group_name,
+                image: b.image_url,
+                phone: b.phone,
+                website: b.website
+            })) as Business[];
+
+            setBusinesses(mapped);
+            setStats(prev => ({ ...prev, scannedBusinesses: mapped.length }));
 
         } catch (err) {
             console.error("Error in fetchBusinesses:", err);
         }
     };
 
-    const handleChangePlan = async (id: number, newPlanId: string) => {
-        try {
-            const business = businesses.find(b => b.id === id);
-            if (!business) return;
-
-            // Prepare object for UPSERT
-            // If it's a static business not in DB yet, we send all fields to create it.
-            // If it's already in DB, upsert will update only provided fields (or all if we send all).
-            const isPremiumPlan = newPlanId === 'launch' || newPlanId === 'featured';
-
-            const { error } = await (supabase
-                .from("businesses") as any)
-                .upsert({
-                    id: business.id,
-                    name: business.name,
-                    category: business.category,
-                    address: business.address,
-                    description: business.description,
-                    lat: business.lat,
-                    lng: business.lng,
-                    plan_id: newPlanId,
-                    is_premium: isPremiumPlan,
-                    owner_id: business.ownerId || (await supabase.auth.getUser()).data.user?.id,
-                    updated_at: new Date().toISOString()
-                }, { onConflict: 'id' });
-
-            if (error) throw error;
-
-            setBusinesses(prev => prev.map(b => {
-                if (b.id === id) {
-                    return { ...b, planId: newPlanId as any, isPremium: isPremiumPlan };
-                }
-                return b;
-            }));
-
-        } catch (error: any) {
-            console.error("Error changing plan:", error);
-            alert(`Error al actualizar el plan: ${error.message || 'Error de base de datos'}`);
-        }
-    };
-
-    const handleAssignOwner = (id: number) => {
+    const handleAssignOwner = (id: string) => {
         const business = businesses.find(b => b.id === id);
         if (business) {
             setTransferData({ isOpen: true, businessId: id, businessName: business.name });
@@ -187,17 +165,17 @@ export default function AdminDashboard() {
         if (!transferData.businessId) return;
 
         try {
-            const { error } = await supabase
-                .from("businesses")
-                .upsert({
-                    id: transferData.businessId,
+            const { error } = await (supabase
+                .from("businesses") as any)
+                .update({
                     owner_id: newOwnerId,
                     updated_at: new Date().toISOString()
-                } as any);
+                })
+                .eq('id', transferData.businessId);
 
             if (error) throw error;
 
-            setBusinesses(prev => prev.map(b => b.id === transferData.businessId ? { ...b, ownerId: newOwnerId } : b));
+            await fetchBusinesses();
             setTransferData({ isOpen: false });
             alert("Transferencia exitosa.");
         } catch (error) {
@@ -206,51 +184,30 @@ export default function AdminDashboard() {
         }
     };
 
-    const handleToggleVisibility = async (id: number, currentStatus: boolean) => {
+    const handleToggleVisibility = async (id: string, currentStatus: boolean) => {
         try {
-            const business = businesses.find(b => b.id === id);
-            if (!business) return;
-
-            // Use full object for upsert to ensure it exists if it's static
             const { error } = await (supabase
                 .from("businesses") as any)
-                .upsert({
-                    ...business,
-                    id,
+                .update({
                     is_hidden: !currentStatus,
                     updated_at: new Date().toISOString()
-                }, { onConflict: 'id' });
+                })
+                .eq('id', id);
 
             if (error) throw error;
 
-            setBusinesses(prev => prev.map(b => b.id === id ? { ...b, isHidden: !currentStatus } : b));
+            // Refetch to ensure consistency
+            await fetchBusinesses();
+            console.log(`[Admin] Visibility toggled for business ${id}`);
         } catch (error: any) {
             console.error("Error toggling visibility:", error);
             alert(`Error al cambiar visibilidad: ${error.message || 'Error de base de datos'}`);
         }
     };
 
-    const handleDelete = (id: number, name: string) => setDeleteConfirm({ type: 'business', id, name });
+    const handleDelete = (id: string, name: string) => setDeleteConfirm({ type: 'business', id, name });
     const handleDeleteUser = (id: string, name: string) => setDeleteConfirm({ type: 'user', id, name });
     const handleDeleteLead = (id: string) => setDeleteConfirm({ type: 'lead', id, name: 'Solicitud' });
-
-    const handleUpdateUserRole = async (id: string, newRole: 'admin' | 'user') => {
-        if (!window.confirm(`¿Estás seguro de cambiar el rol a ${newRole}?`)) return;
-
-        try {
-            const { error } = await (supabase
-                .from("profiles") as any)
-                .update({ role: newRole })
-                .eq("id", id);
-
-            if (error) throw error;
-
-            setUsers(prev => prev.map(u => u.id === id ? { ...u, role: newRole } : u));
-        } catch (error) {
-            console.error("Error updating role:", error);
-            alert("Error al actualizar rol");
-        }
-    };
 
     const confirmDelete = async () => {
         if (!deleteConfirm) return;
@@ -285,7 +242,17 @@ export default function AdminDashboard() {
     };
 
     const handleEdit = (business: Business) => {
-        setEditingBusiness(business);
+        // Find owner email for the form if possible
+        const businessOwner = users.find(u => u.id === business.ownerId);
+
+        setEditingBusiness({
+            ...business,
+            // Ensure fields are mapped for AddBusinessForm (snake_case)
+            group_name: (business as any).group_name || business.group,
+            image_url: (business as any).image_url || business.image,
+            plan_id: (business as any).plan_id || business.planId,
+            owner_email: (business as any).owner_email || businessOwner?.email
+        } as any);
         setActiveTab('add');
     };
 
@@ -294,58 +261,7 @@ export default function AdminDashboard() {
         navigate("/admin/login");
     };
 
-    const handleSyncData = async () => {
-        if (!window.confirm("⚠️ ¿Estás seguro de sincronizar los datos del JSON? \n\nEsto subirá todos los negocios del archivo a la base de datos de producción. Solo hazlo una vez para migrar.")) return;
 
-        setIsSyncing(true);
-        setSyncProgress(0);
-        try {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) return;
-
-            // Prepare batches of 50 to avoid timeouts
-            const batchSize = 50;
-            const businessesToSync = businessesData as any[];
-
-            for (let i = 0; i < businessesToSync.length; i += batchSize) {
-                const chunk = businessesToSync.slice(i, i + batchSize);
-                const progress = Math.min(i + batchSize, businessesToSync.length);
-                setSyncProgress(progress);
-                console.log(`Sincronizando lote ${i / batchSize + 1}... (${progress}/${businessesToSync.length})`);
-
-                const batch = chunk.map(biz => ({
-                    id: biz.id,
-                    name: biz.name,
-                    category: biz.category,
-                    group_name: biz.group,
-                    address: biz.address,
-                    description: biz.description,
-                    lat: biz.lat,
-                    lng: biz.lng,
-                    image_url: biz.image || null,
-                    is_premium: biz.isPremium || false,
-                    owner_id: user.id
-                }));
-
-                const { error } = await (supabase
-                    .from("businesses") as any)
-                    .upsert(batch, { onConflict: 'id' });
-
-                if (error) {
-                    console.error("Error en lote:", error);
-                    throw error;
-                }
-            }
-
-            alert(`🎉 ¡Éxito! Se han sincronizado ${businessesToSync.length} negocios correctamente de la base de datos estática.`);
-            fetchBusinesses();
-        } catch (error: any) {
-            console.error("Error syncing data:", error);
-            alert(`❌ Error durante la migración: ${error.message || 'Error desconocido'}\n\nRevisa la consola para más detalles.`);
-        } finally {
-            setIsSyncing(false);
-        }
-    };
 
     const filteredBusinesses = useMemo(() => {
         return businesses.filter(b => {
@@ -366,9 +282,15 @@ export default function AdminDashboard() {
     if (loading) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
-                <div className="flex flex-col items-center gap-4">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                    <p>Cargando panel...</p>
+                <div className="flex flex-col items-center gap-6">
+                    <div className="relative">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+                        <Shield className="absolute inset-0 m-auto w-5 h-5 text-primary opacity-50" />
+                    </div>
+                    <div className="flex flex-col items-center gap-2">
+                        <p className="font-medium animate-pulse">{loadingStep}</p>
+                        <p className="text-xs text-muted-foreground italic">Esto puede tomar unos segundos la primera vez</p>
+                    </div>
                 </div>
             </div>
         );
@@ -399,15 +321,6 @@ export default function AdminDashboard() {
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={handleSyncData}
-                        disabled={isSyncing}
-                        className="text-orange-400 hover:text-orange-300 hover:bg-orange-400/10"
-                    >
-                        {isSyncing ? `Sincronizando (${syncProgress}/${businessesData.length})...` : "Sincronizar JSON → DB"}
-                    </Button>
                     <Button variant="ghost" size="sm" onClick={handleLogout}>
                         <LogOut className="w-4 h-4 mr-2" />
                         Salir
@@ -448,9 +361,12 @@ export default function AdminDashboard() {
                 {/* Tabs */}
                 <div className="flex gap-4 border-b border-white/10 pb-1 overflow-x-auto">
                     {[
+                        { id: 'analytics', label: '📊 Analíticas' },
                         { id: 'businesses', label: 'Negocios' },
                         { id: 'leads', label: 'Solicitudes' },
+                        { id: 'reviews', label: 'Moderación Reseñas' },
                         { id: 'users', label: 'Usuarios' },
+                        { id: 'ingesta', label: 'Ingesta Inteligente' },
                         { id: 'add', label: '+ Agregar Negocio' }
                     ].map(tab => (
                         <button
@@ -496,9 +412,10 @@ export default function AdminDashboard() {
                                 onChange={(e) => setFilterPlan(e.target.value as any)}
                             >
                                 <option value="all">Todos los Planes</option>
-                                <option value="free">Free</option>
-                                <option value="launch">Launch</option>
-                                <option value="featured">Featured</option>
+                                <option value="free">🆓 Gratuito</option>
+                                <option value="exchange">🔄 Intercambio</option>
+                                <option value="premium">💎 Premium</option>
+                                <option value="launch">🚀 Lanzamiento</option>
                             </select>
                         </div>
                     </div>
@@ -506,6 +423,8 @@ export default function AdminDashboard() {
 
                 {/* Content Area */}
                 <div className="glass-card p-6 rounded-xl min-h-[500px]">
+                    {activeTab === 'analytics' && <AnalyticsDashboard />}
+
                     {activeTab === 'businesses' && (
                         <>
                             <div className="flex justify-between items-center mb-6">
@@ -518,7 +437,6 @@ export default function AdminDashboard() {
                             </div>
                             <AdminBusinessTable
                                 businesses={filteredBusinesses}
-                                onChangePlan={handleChangePlan}
                                 onToggleVisibility={handleToggleVisibility}
                                 onAssignOwner={handleAssignOwner}
                                 onEdit={handleEdit}
@@ -540,13 +458,19 @@ export default function AdminDashboard() {
                         </>
                     )}
 
+                    {activeTab === 'reviews' && (
+                        <>
+                            <h2 className="text-lg font-semibold mb-6">Moderación de Reseñas</h2>
+                            <ReviewModeration />
+                        </>
+                    )}
+
                     {activeTab === 'users' && (
                         <>
                             <h2 className="text-lg font-semibold mb-6">Usuarios Registrados</h2>
                             <UserTable
                                 users={users}
                                 onDelete={handleDeleteUser}
-                                onUpdateRole={handleUpdateUserRole}
                             />
                         </>
                     )}
@@ -557,13 +481,15 @@ export default function AdminDashboard() {
                                 {editingBusiness ? "Editar Negocio" : "Agregar Nuevo Negocio"}
                             </h2>
                             <AddBusinessForm
+                                key={editingBusiness?.id || leadToConvert?.id || 'new'}
                                 initialData={editingBusiness || (leadToConvert ? {
                                     name: leadToConvert.business_name,
                                     description: leadToConvert.notes,
                                     address: '',
                                     category: '',
                                     lat: 25.6866,
-                                    lng: -100.3161
+                                    lng: -100.3161,
+                                    owner_email: leadToConvert.email
                                 } : undefined)}
                                 onSuccess={() => {
                                     setActiveTab('businesses');
@@ -579,6 +505,8 @@ export default function AdminDashboard() {
                             />
                         </>
                     )}
+
+                    {activeTab === 'ingesta' && <SmartIngestion currentUserId={currentUser?.id} />}
                 </div>
             </div>
 

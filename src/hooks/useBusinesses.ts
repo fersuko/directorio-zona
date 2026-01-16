@@ -1,67 +1,28 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
-import businessesData from "../data/businesses.json";
 import type { Business } from "../types";
 
 export function useBusinesses() {
-    const [businesses, setBusinesses] = useState<Business[]>(businessesData as Business[]);
+    const [businesses, setBusinesses] = useState<Business[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        fetchOverrides();
+        fetchBusinesses();
     }, []);
 
-    const fetchOverrides = async () => {
+    const fetchBusinesses = async () => {
         try {
-            // 1. Fetch ALL businesses from Supabase (both overrides and new dynamic businesses)
-            const { data: dbBusinesses, error } = await supabase
+            const { data, error } = await supabase
                 .from("businesses")
-                .select("*");
+                .select("*")
+                .eq('is_hidden', false); // Only show public businesses
 
             if (error) {
                 console.error("Error fetching businesses:", error);
                 return;
             }
 
-            // 2. Process static JSON data
-            // 3. Merge Strategy
-            // We always map static businesses to ensure defaults (isPremium=false) are applied
-            // even if there are no DB overrides yet.
-
-            const dbMap = new Map((dbBusinesses || []).map((b: any) => [b.id, b]));
-
-            let allBusinesses = (businessesData as Business[]).map(staticBiz => {
-                const dbBiz = dbMap.get(staticBiz.id);
-                if (dbBiz) {
-                    // Found in DB, apply overrides
-                    const planId = dbBiz.plan_id || 'free';
-                    const isPremiumPlan = planId === 'launch' || planId === 'featured';
-
-                    // Remove from map so we know it's processed (for new businesses check later)
-                    dbMap.delete(staticBiz.id);
-
-                    return {
-                        ...staticBiz,
-                        ...dbBiz, // Apply all DB fields
-                        isPremium: isPremiumPlan || dbBiz.is_premium || false,
-                        planId: planId,
-                        ownerId: dbBiz.owner_id,
-                        lat: Number(dbBiz.lat) || staticBiz.lat,
-                        lng: Number(dbBiz.lng) || staticBiz.lng,
-                        image: dbBiz.image_url || staticBiz.image,
-                        isHidden: dbBiz.is_hidden || false
-                    };
-                }
-                // No DB override: Force defaults
-                return {
-                    ...staticBiz,
-                    planId: 'free' as 'free' | 'launch' | 'featured',
-                    isPremium: false
-                };
-            });
-
-            // 4. Add remaining DB businesses (New ones that weren't in static JSON)
-            const newBusinesses = Array.from(dbMap.values()).map((dbBiz: any) => {
+            const mappedBusinesses = (data || []).map((dbBiz: any) => {
                 const planId = dbBiz.plan_id || 'free';
                 const isPremiumPlan = planId === 'launch' || planId === 'featured';
 
@@ -84,10 +45,7 @@ export function useBusinesses() {
                 } as Business;
             });
 
-            // Filter out hidden businesses for public view
-            const visibleBusinesses = [...allBusinesses, ...newBusinesses].filter(b => !b.isHidden);
-
-            setBusinesses(visibleBusinesses);
+            setBusinesses(mappedBusinesses);
         } catch (err) {
             console.error("Error in useBusinesses:", err);
         } finally {

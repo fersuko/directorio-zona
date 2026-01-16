@@ -33,7 +33,12 @@
     --ring: 212.7 26.8% 83.9%;
 
     --radius: 0.5rem;
+    --font-size-base: 16px;
   }
+}
+
+html {
+  font-size: var(--font-size-base);
 }
 
 @layer base {

@@ -8,10 +8,17 @@ import { useNavigate } from "react-router-dom";
 import { Logo } from "../components/ui/Logo";
 import { getBusinessImage } from "../lib/businessImages";
 import { useBusinesses } from "../hooks/useBusinesses";
+import { useAnalytics } from "../hooks/useAnalytics";
+import { useEffect } from "react";
 
 export default function Home() {
     const navigate = useNavigate();
     const { businesses } = useBusinesses();
+    const { logEvent } = useAnalytics();
+
+    useEffect(() => {
+        logEvent('page_view', { page: 'home' });
+    }, [logEvent]);
 
     const premiumBusinesses = businesses.filter(b => b.isPremium);
     const regularBusinesses = businesses.filter(b => !b.isPremium);
@@ -75,7 +82,10 @@ export default function Home() {
                                 initial={{ opacity: 0, scale: 0.9 }}
                                 animate={{ opacity: 1, scale: 1 }}
                                 transition={{ delay: i * 0.05 }}
-                                onClick={() => navigate(`/search?category=${encodeURIComponent(category)}`)}
+                                onClick={() => {
+                                    logEvent('search', { category: category, source: 'home_chips' });
+                                    navigate(`/search?category=${encodeURIComponent(category)}`);
+                                }}
                                 className="flex flex-col items-center gap-2 cursor-pointer group min-w-[70px]"
                             >
                                 <div className="w-14 h-14 rounded-2xl bg-card border border-border flex items-center justify-center text-xl group-hover:scale-105 transition-transform shadow-sm relative">

@@ -60,10 +60,20 @@ export function BusinessImageManager() {
 
     if (loading) return <div className="text-center py-12 text-muted-foreground">Cargando...</div>;
 
+    if (!businessId) {
+        return (
+            <div className="glass-card p-6 rounded-xl border border-yellow-500/20 bg-yellow-500/5 text-center">
+                <p className="text-sm text-muted-foreground">
+                    Aún no tienes un negocio asignado. Contacta al administrador para vincular tu cuenta.
+                </p>
+            </div>
+        );
+    }
+
     return (
         <div className="space-y-2">
             <ImageUpload
-                businessId={businessId!}
+                businessId={businessId}
                 currentImageUrl={currentImage}
                 onUploadSuccess={handleUploadSuccess}
             />

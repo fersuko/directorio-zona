@@ -18,38 +18,30 @@ export default function AdminLoginPage() {
         setError(null);
 
         try {
-            // 1. Authenticate with Supabase Auth
-            const { data: { user }, error: authError } = await supabase.auth.signInWithPassword({
+            console.log("[AdminLogin] Authenticating...");
+
+            // Just authenticate - role check will happen in AdminDashboard
+            const { error: authError } = await supabase.auth.signInWithPassword({
                 email,
                 password,
             });
 
             if (authError) throw authError;
-            if (!user) throw new Error("No user found");
 
-            // 2. Check if user has 'admin' role
-            const { data: profile, error: profileError } = await supabase
-                .from("profiles")
-                .select("role")
-                .eq("id", user.id)
-                .single();
+            console.log("[AdminLogin] Login successful, navigating to dashboard...");
 
-            if (profileError) throw profileError;
+            // Small delay to let AuthContext process the SIGNED_IN event
+            await new Promise(resolve => setTimeout(resolve, 100));
 
-            if ((profile as any)?.role !== 'admin') {
-                await supabase.auth.signOut();
-                throw new Error("Acceso denegado. No tienes permisos de administrador.");
-            }
-
-            // 3. Redirect to Dashboard
+            // Navigate to dashboard (it will verify admin role)
             navigate("/admin");
 
         } catch (err: any) {
             console.error("Admin login error:", err);
             setError(err.message || "Error al iniciar sesión");
-        } finally {
             setLoading(false);
         }
+        // Don't set loading=false on success because we're navigating away
     };
 
     return (

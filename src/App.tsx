@@ -15,57 +15,55 @@ import AdminLoginPage from "./pages/AdminLoginPage";
 import BusinessDetailPage from "./pages/BusinessDetailPage";
 import JoinPage from "./pages/JoinPage";
 import FavoritesPage from "./pages/FavoritesPage";
-import { useEffect, useState } from "react";
+import TermsPage from "./pages/TermsPage";
+import PrivacyPage from "./pages/PrivacyPage";
+import { useEffect } from "react";
 
-// ... existing imports ...
 import { supabase } from "./lib/supabase";
-import type { Session } from "@supabase/supabase-js";
+import { AuthProvider, useAuth } from "./context/AuthContext";
 
-function App() {
-  const [session, setSession] = useState<Session | null>(null);
+function AppContent() {
+  const { user } = useAuth();
 
+  // Presence logic (Isolating it to depend only on user id)
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-    });
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      setSession(session);
-
-      // Sync profile from metadata on login if missing
-      if (event === 'SIGNED_IN' && session?.user) {
-        const { user } = session;
-        const metadata = user.user_metadata;
-        const fullName = metadata.full_name || metadata.name || metadata.picture;
-        const avatarUrl = metadata.avatar_url || metadata.picture;
-
-        if (fullName || avatarUrl) {
-          // Check if profile needs update
-          const { data } = await supabase
-            .from('profiles')
-            .select('full_name, avatar_url')
-            .eq('id', user.id)
-            .single();
-
-          const profile = data as { full_name: string | null; avatar_url: string | null } | null;
-
-          if (profile && (!profile.full_name && fullName)) {
-            await (supabase as any).from('profiles').update({
-              full_name: fullName,
-              avatar_url: avatarUrl || profile.avatar_url,
-              updated_at: new Date().toISOString()
-            }).eq('id', user.id);
-          }
-        }
+    // Fallback for crypto.randomUUID() in non-secure contexts (HTTP over local IP)
+    const generateUUID = () => {
+      if (typeof crypto.randomUUID === 'function') {
+        return crypto.randomUUID();
       }
-    });
+      // Fallback for non-secure contexts
+      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+        const r = Math.random() * 16 | 0;
+        const v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+      });
+    };
 
-    return () => subscription.unsubscribe();
-  }, []);
+    const sessionId = sessionStorage.getItem('analytics_session_id') || generateUUID();
+    if (!sessionStorage.getItem('analytics_session_id')) {
+      sessionStorage.setItem('analytics_session_id', sessionId);
+    }
 
-  console.log("Current session:", session);
+    const presenceChannel = supabase.channel('online_users');
+    presenceChannel
+      .on('presence', { event: 'sync' }, () => {
+        // Optional: Store count in global state if needed
+      })
+      .subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await presenceChannel.track({
+            online_at: new Date().toISOString(),
+            session_id: sessionId,
+            user_id: user?.id || 'anon'
+          });
+        }
+      });
+
+    return () => {
+      supabase.removeChannel(presenceChannel);
+    };
+  }, [user?.id]);
 
   return (
     <Router>
@@ -82,6 +80,8 @@ function App() {
           <Route path="register-business" element={<RegisterBusinessPage />} />
           <Route path="business/:id" element={<BusinessDetailPage />} />
           <Route path="unete" element={<JoinPage />} />
+          <Route path="terms" element={<TermsPage />} />
+          <Route path="privacy" element={<PrivacyPage />} />
         </Route>
 
         {/* Rutas de Administración - Sin footer ni chat IA */}
@@ -97,4 +97,13 @@ function App() {
   );
 }
 
+function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
+  );
+}
+
 export default App;
+

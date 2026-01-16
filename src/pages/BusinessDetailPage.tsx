@@ -9,6 +9,8 @@ import { MapContainer, TileLayer, Marker, Polyline } from "react-leaflet";
 import { useGeolocation } from "../hooks/useGeolocation";
 import { supabase } from "../lib/supabase";
 import L from "leaflet";
+import { useAnalytics } from "../hooks/useAnalytics";
+import { checkContent } from "../utils/moderation";
 
 // Fix for default marker icon
 import icon from 'leaflet/dist/images/marker-icon.png';
@@ -65,6 +67,18 @@ export default function BusinessDetailPage() {
 
         fetchBusiness();
     }, [id]);
+
+    // Analytics
+    const { logEvent } = useAnalytics();
+    useEffect(() => {
+        if (business) {
+            logEvent('business_view', {
+                business_id: business.id,
+                business_name: business.name,
+                category: business.category
+            });
+        }
+    }, [business, logEvent]);
 
     // Fetch reviews
     useEffect(() => {
@@ -150,6 +164,17 @@ export default function BusinessDetailPage() {
                 return;
             }
 
+            // check moderation settings
+            const { data: settings } = await supabase.from('settings').select('value').eq('key', 'moderation').single();
+            const moderationEnabled = (settings as any)?.value?.enabled ?? true;
+
+            const { safe, reason } = checkContent(comment);
+
+            let status = 'approved';
+            if (moderationEnabled || !safe) {
+                status = 'pending';
+            }
+
             const { error } = await supabase
                 .from('reviews')
                 .insert({
@@ -157,6 +182,7 @@ export default function BusinessDetailPage() {
                     user_id: user.id,
                     rating,
                     comment,
+                    status,
                     rating_quality: metrics?.product_quality,
                     rating_price: metrics?.quality_price,
                     rating_service: metrics?.service
@@ -164,12 +190,17 @@ export default function BusinessDetailPage() {
 
             if (error) throw error;
 
-            // Refresh reviews
+            if (status === 'pending') {
+                alert(safe ? "Gracias. Tu reseña ha sido enviada y está en espera de moderación." : `Contenido marcado: ${reason}. Tu reseña será revisada por un administrador.`);
+            }
+
+            // Refresh reviews (only approved ones for public view)
             if (id) {
                 const { data } = await supabase
                     .from('reviews')
                     .select('*, profiles(full_name)')
                     .eq('business_id', id)
+                    .eq('status', 'approved')
                     .order('created_at', { ascending: false });
 
                 if (data) setReviews(data);
@@ -225,15 +256,46 @@ export default function BusinessDetailPage() {
 
     const openStatus = isOpenNow(business.opening_hours);
 
+    // JSON-LD for SEO
+    const jsonLd = {
+        "@context": "https://schema.org",
+        "@type": "LocalBusiness",
+        "name": business.name,
+        "image": business.image_url,
+        "address": {
+            "@type": "PostalAddress",
+            "streetAddress": business.address,
+            "addressLocality": business.group_name || business.group,
+            "addressRegion": "NL",
+            "addressCountry": "MX"
+        },
+        "geo": {
+            "@type": "GeoCoordinates",
+            "latitude": business.lat,
+            "longitude": business.lng
+        },
+        "url": window.location.href,
+        "telephone": business.phone,
+        "description": business.description,
+        "aggregateRating": reviews.length > 0 ? {
+            "@type": "AggregateRating",
+            "ratingValue": (reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length).toFixed(1),
+            "reviewCount": reviews.length
+        } : undefined
+    };
+
     return (
         <div className="pb-24 bg-background min-h-screen relative">
             <Helmet>
-                <title>{business.name} | Directorio Zona</title>
-                <meta name="description" content={`Descubre ${business.name} en ${business.category}. ${business.description?.substring(0, 150)}...`} />
+                <title>{`${business.name} | Directorio Zona`}</title>
+                <meta name="description" content={business.description || `Encuentra ${business.name} en Directorio Zona. Ubicación, promociones y reseñas de clientes.`} />
+                <script type="application/ld+json">
+                    {JSON.stringify(jsonLd)}
+                </script>
             </Helmet>
 
             {/* Hero Section */}
-            <div className="h-64 w-full relative overflow-hidden">
+            <div className="h-52 w-full relative overflow-hidden">
                 <img
                     src={business.image_url || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&q=80"}
                     alt={business.name}
@@ -252,7 +314,6 @@ export default function BusinessDetailPage() {
                 </button>
 
                 {/* Favorite Button */}
-                {/* Favorite Button */}
                 <button
                     onClick={handleToggleFavorite}
                     disabled={togglingFavorite}
@@ -263,7 +324,7 @@ export default function BusinessDetailPage() {
             </div>
 
             {/* Content */}
-            <div className="px-4 -mt-8 relative z-10 space-y-6">
+            <div className="px-4 -mt-8 relative z-10 space-y-4">
                 {/* Header Info */}
                 <div className="glass-card p-5 rounded-2xl space-y-3">
                     <div className="flex justify-between items-start">
@@ -278,8 +339,43 @@ export default function BusinessDetailPage() {
                         )}
                     </div>
 
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <MapPin className="w-4 h-4 text-primary" />
+                    {/* Rating Row (Added) */}
+                    <div className="flex items-center justify-between py-1">
+                        <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-1.5">
+                                <span className="text-2xl font-bold text-white">
+                                    {reviews.length > 0 ? (reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length).toFixed(1) : "N/A"}
+                                </span>
+                                <div className="flex items-center gap-0.5">
+                                    {[...Array(5)].map((_, i) => (
+                                        <Star
+                                            key={i}
+                                            className={`w-4 h-4 ${reviews.length > 0 && i < Math.round(reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length) ? "fill-yellow-500 text-yellow-500" : "text-muted-foreground/30"}`}
+                                        />
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="h-8 w-px bg-white/10" />
+                            <button onClick={() => {
+                                const el = document.getElementById('reviews-section');
+                                if (el) el.scrollIntoView({ behavior: 'smooth' });
+                            }} className="text-sm text-primary hover:underline">
+                                {reviews.length} {reviews.length === 1 ? 'opinión' : 'opiniones'}
+                            </button>
+                        </div>
+
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 text-xs border-primary/50 text-primary hover:bg-primary/10"
+                            onClick={() => setShowReviewModal(true)}
+                        >
+                            Calificar
+                        </Button>
+                    </div>
+
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground border-t border-white/5 pt-3">
+                        <MapPin className="w-4 h-4 text-primary shrink-0" />
                         <span className="truncate">{business.address}</span>
                     </div>
 
@@ -288,44 +384,58 @@ export default function BusinessDetailPage() {
                         <span className={`font-medium ${openStatus ? "text-green-400" : "text-red-400"}`}>
                             {openStatus ? "Abierto ahora" : "Cerrado ahora"}
                         </span>
-                        {/* More detailed hours could go here */}
                     </div>
                 </div>
 
+
+
                 {/* Action Buttons */}
-                <div className="grid grid-cols-3 gap-3">
-                    <Button
-                        variant="secondary"
-                        className="flex flex-col h-auto py-3 gap-1 text-xs"
-                        onClick={() => window.location.href = `tel:${business.phone || ''}`}
+                <div className="px-4 py-2 grid grid-cols-3 gap-3 relative z-10">
+                    <a
+                        href={`tel:${business.phone}`}
+                        onClick={() => logEvent('click_call', { business_id: business.id, phone: business.phone })}
+                        className="flex flex-col items-center justify-center gap-1 bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-3 hover:bg-white/10 transition-colors active:scale-95 group"
                     >
-                        <Phone className="w-5 h-5" />
-                        Llamar
-                    </Button>
-                    <Button
-                        variant="premium"
-                        className="flex flex-col h-auto py-3 gap-1 text-xs"
-                        onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&destination=${business.lat},${business.lng}`, '_blank')}
-                    >
-                        <Navigation className="w-5 h-5" />
-                        Cómo llegar
-                    </Button>
-                    <Button
-                        variant="secondary"
-                        className="flex flex-col h-auto py-3 gap-1 text-xs"
+                        <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                            <Phone className="w-5 h-5 text-primary" />
+                        </div>
+                        <span className="text-xs font-medium">Llamar</span>
+                    </a>
+
+                    <button
                         onClick={() => {
+                            logEvent('click_gps', { business_id: business.id });
+                            window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(business.name + " " + business.address)}`, '_blank');
+                        }}
+                        className="flex flex-col items-center justify-center gap-1 bg-yellow-500/10 backdrop-blur-md border border-yellow-500/20 rounded-xl p-3 hover:bg-yellow-500/20 transition-colors active:scale-95 group"
+                    >
+                        <div className="w-10 h-10 rounded-full bg-yellow-500/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                            <Navigation className="w-5 h-5 text-yellow-500" />
+                        </div>
+                        <span className="text-xs font-medium text-yellow-500">Cómo llegar</span>
+                    </button>
+
+                    <button
+                        onClick={() => {
+                            logEvent('click_share', { business_id: business.id });
                             if (navigator.share) {
                                 navigator.share({
                                     title: business.name,
-                                    text: `Checa este negocio: ${business.name}`,
+                                    text: `Mira este lugar en Directorio Zona: ${business.name}`,
                                     url: window.location.href,
-                                });
+                                }).catch(console.error);
+                            } else {
+                                navigator.clipboard.writeText(window.location.href);
+                                alert("Enlace copiado al portapapeles");
                             }
                         }}
+                        className="flex flex-col items-center justify-center gap-1 bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-3 hover:bg-white/10 transition-colors active:scale-95 group"
                     >
-                        <Share2 className="w-5 h-5" />
-                        Compartir
-                    </Button>
+                        <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                            <Share2 className="w-5 h-5 text-blue-500" />
+                        </div>
+                        <span className="text-xs font-medium">Compartir</span>
+                    </button>
                 </div>
 
                 {/* Description */}
@@ -363,7 +473,7 @@ export default function BusinessDetailPage() {
                                 scrollWheelZoom={false}
                             >
                                 <TileLayer
-                                    url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+                                    url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
                                 />
                                 <Marker position={[business.lat, business.lng]} />
 
@@ -388,8 +498,9 @@ export default function BusinessDetailPage() {
                         </div>
                     </div>
                 </div>
-                {/* Reviews Section */}
-                <div className="space-y-6">
+
+                {/* Reviews Section (Relocated Below Map) */}
+                <div id="reviews-section" className="space-y-6 scroll-mt-24">
                     <div className="flex flex-col gap-4">
                         <div className="flex items-center justify-between">
                             <h2 className="font-semibold text-lg">Reseñas y Opiniones</h2>

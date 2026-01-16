@@ -1,5 +1,5 @@
 export interface Plan {
-    id: 'free' | 'launch' | 'featured';
+    id: 'free' | 'launch' | 'exchange' | 'premium';
     name: string;
     description: string;
     price: number;
@@ -7,7 +7,7 @@ export interface Plan {
 }
 
 export interface Business {
-    id: number;
+    id: string;
     name: string;
     category: string;
     group: string;
@@ -16,17 +16,19 @@ export interface Business {
     address: string;
     description: string;
     isPremium: boolean; // Computed from plan
-    planId?: 'free' | 'launch' | 'featured';
+    planId?: 'free' | 'launch' | 'exchange' | 'premium';
     ownerId?: string;
     image?: string;
     rating?: number;
     reviewCount?: number;
     isHidden?: boolean; // Controls visibility in app
+    phone?: string;
+    website?: string;
 }
 
 export interface Promotion {
     id: string;
-    businessId: number;
+    businessId: string;
     title: string;
     description: string;
     discount: string;
@@ -35,7 +37,7 @@ export interface Promotion {
 
 export interface Review {
     id: string;
-    business_id: number;
+    business_id: string;
     user_id: string;
     rating: number;
     comment: string;

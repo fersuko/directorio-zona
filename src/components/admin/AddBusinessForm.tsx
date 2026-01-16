@@ -3,12 +3,15 @@ import { supabase } from "../../lib/supabase"; // Main client (Admin session)
 import { createClient } from "@supabase/supabase-js"; // For temp client
 import { Button } from "../ui/Button";
 import { Save, MapPin, Loader2, CheckCircle, AlertCircle, UserPlus, Search as SearchIcon, Globe } from "lucide-react";
-import { geocodeAddress } from "../../lib/geocoding";
+import { geocodeAddress, getGooglePhotoUrl } from "../../lib/geocoding";
+import { uploadBusinessPhoto } from "../../lib/storage";
+import { useGoogleMaps } from "../../hooks/useGoogleMaps";
 
 interface AddBusinessFormProps {
     onSuccess: () => void;
     onCancel: () => void;
     initialData?: {
+        id?: string;
         name: string;
         category: string;
         address: string;
@@ -17,6 +20,11 @@ interface AddBusinessFormProps {
         lng: number;
         phone?: string;
         website?: string;
+        group_name?: string;
+        image_url?: string;
+        plan_id?: string;
+        owner_email?: string;
+        owner_id?: string;
     };
 }
 
@@ -24,30 +32,34 @@ export function AddBusinessForm({ onSuccess, onCancel, initialData }: AddBusines
     const [loading, setLoading] = useState(false);
     const [geocoding, setGeocoding] = useState(false);
     const [geocodeResult, setGeocodeResult] = useState("");
+    useGoogleMaps();
 
     // Google Places Search State
     const [googleSearch, setGoogleSearch] = useState("");
     const [isSearchingGoogle, setIsSearchingGoogle] = useState(false);
     const [googleResults, setGoogleResults] = useState<any[]>([]);
+    const [selectedPhotoRef, setSelectedPhotoRef] = useState<string | null>(null);
 
     // Owner Management State
-    const [ownerEmail, setOwnerEmail] = useState("");
+    const [ownerEmail, setOwnerEmail] = useState(initialData?.owner_email || "");
     const [ownerPassword, setOwnerPassword] = useState("");
-    const [ownerStatus, setOwnerStatus] = useState<'idle' | 'checking' | 'found' | 'not_found'>('idle');
-    const [foundOwnerName, setFoundOwnerName] = useState("");
+    const [ownerStatus, setOwnerStatus] = useState<'idle' | 'checking' | 'found' | 'not_found'>(
+        initialData?.owner_email ? 'found' : 'idle'
+    );
+    const [foundOwnerName, setFoundOwnerName] = useState(initialData?.owner_email ? "Dueño actual" : "");
 
     const [formData, setFormData] = useState({
         name: initialData?.name || "",
         category: initialData?.category || "Restaurante",
-        group_name: (initialData as any)?.group_name || (initialData as any)?.group || "Gastronomía",
+        group_name: initialData?.group_name || "Gastronomía",
         address: initialData?.address || "",
         description: initialData?.description || "",
         lat: initialData?.lat || 25.6667,
         lng: initialData?.lng || -100.3167,
         phone: initialData?.phone || "",
         website: initialData?.website || "",
-        image_url: (initialData as any)?.image_url || (initialData as any)?.image || "",
-        plan_id: "free"
+        image_url: initialData?.image_url || "",
+        plan_id: initialData?.plan_id || "free"
     });
 
     const handleGeocode = async () => {
@@ -80,37 +92,38 @@ export function AddBusinessForm({ onSuccess, onCancel, initialData }: AddBusines
     };
 
     const handleGoogleSearch = async () => {
-        if (!googleSearch.trim()) return;
+        if (!googleSearch.trim() || !(window as any).google?.maps) return;
 
         setIsSearchingGoogle(true);
         setGoogleResults([]);
 
         try {
-            // Nota: En una implementación real con Google Places API, usaríamos 'types' 
-            // para excluir 'neighborhood', 'political', etc.
-            // Por ahora, con Nominatim, validamos palabras clave.
-            const result = await geocodeAddress(googleSearch, "Monterrey, Nuevo León");
+            const service = new (window as any).google.maps.places.PlacesService(document.createElement('div'));
 
-            const forbiddenKeywords = ['colonia', 'sector', 'distrito', 'calle', 'avenida', 'privada'];
-            const isNonCommercial = result.success && forbiddenKeywords.some(kw =>
-                result.displayName.toLowerCase().includes(kw) && !googleSearch.toLowerCase().includes(kw)
-            );
+            const request = {
+                query: googleSearch,
+                location: new (window as any).google.maps.LatLng(25.6866, -100.3161), // Bias to Monterrey Centro
+                radius: 10000,
+            };
 
-            if (result.success && !isNonCommercial) {
-                setGoogleResults([{
-                    name: googleSearch,
-                    address: result.displayName,
-                    lat: result.lat,
-                    lng: result.lng
-                }]);
-            } else if (isNonCommercial) {
-                alert("El resultado parece ser una zona geográfica o residencial. Por favor busca un nombre de negocio específico.");
-            } else {
-                alert("No se encontraron resultados en esta zona.");
-            }
+            service.textSearch(request, (results: any[], status: any) => {
+                setIsSearchingGoogle(false);
+                if (status === (window as any).google.maps.places.PlacesServiceStatus.OK && results) {
+                    const mappedResults = results.map(place => ({
+                        name: place.name,
+                        address: place.formatted_address,
+                        lat: place.geometry.location.lat(),
+                        lng: place.geometry.location.lng(),
+                        photoReference: place.photos?.[0]?.photo_reference,
+                        placeId: place.place_id
+                    }));
+                    setGoogleResults(mappedResults);
+                } else {
+                    alert("No se encontraron resultados o la API no está disponible.");
+                }
+            });
         } catch (error) {
             console.error("Error searching google:", error);
-        } finally {
             setIsSearchingGoogle(false);
         }
     };
@@ -121,8 +134,10 @@ export function AddBusinessForm({ onSuccess, onCancel, initialData }: AddBusines
             name: place.name,
             address: place.address,
             lat: place.lat,
-            lng: place.lng
+            lng: place.lng,
+            image_url: place.photoReference ? getGooglePhotoUrl(place.photoReference) : formData.image_url
         });
+        setSelectedPhotoRef(place.photoReference || null);
         setGoogleResults([]);
         setGoogleSearch("");
     };
@@ -224,32 +239,41 @@ export function AddBusinessForm({ onSuccess, onCancel, initialData }: AddBusines
                 }
             }
 
-            const businessData = {
-                ...formData,
-                owner_id: finalOwnerId
-            };
-
-            const { error } = await supabase
-                .from("businesses")
-                .insert([businessData] as any);
-
-            if (error) throw error;
-
-            // Auto-promote user to 'business_owner' if they are just a 'user'
-            // This ensures they get access to the dashboard
-            if (finalOwnerId !== user.id) { // Don't change admin's role
-                const { error: roleError } = await (supabase
-                    .from('profiles') as any) // Cast to any to avoid strict typing issues
-                    .update({ role: 'business_owner' })
-                    .eq('id', finalOwnerId)
-                    .eq('role', 'user'); // Only promote 'user', don't demote 'admin'
-
-                if (roleError) console.warn("Could not promote user to business_owner:", roleError);
+            // Handle Photo Persistence
+            let finalImageUrl = formData.image_url;
+            if (selectedPhotoRef) {
+                const uploadedUrl = await uploadBusinessPhoto(selectedPhotoRef, formData.name);
+                if (uploadedUrl) {
+                    finalImageUrl = uploadedUrl;
+                }
             }
 
-            let successMsg = `✅ Negocio "${formData.name}" agregado.`;
+            const businessData = {
+                ...formData,
+                image_url: finalImageUrl,
+                owner_id: finalOwnerId,
+                is_premium: formData.plan_id !== 'free',
+                updated_at: new Date().toISOString()
+            };
+
+            if (initialData?.id) {
+                // UPDATE existing
+                const { error } = await (supabase
+                    .from("businesses") as any)
+                    .update(businessData)
+                    .eq('id', initialData.id);
+                if (error) throw error;
+            } else {
+                // INSERT new
+                const { error } = await (supabase
+                    .from("businesses") as any)
+                    .insert([businessData]);
+                if (error) throw error;
+            }
+
+            let successMsg = `✅ Negocio "${formData.name}" guardado correctamente.`;
             if (newAccountCreated) successMsg += `\n👤 Nuevo usuario creado y asignado como Dueño.`;
-            else if (ownerEmail && ownerStatus === 'found') successMsg += `\n👤 Asignado a usuario existente (Promovido a Dueño).`;
+            else if (ownerEmail && ownerStatus === 'found') successMsg += `\n👤 Asignado a usuario existente.`;
 
             alert(successMsg);
             onSuccess();
@@ -299,8 +323,19 @@ export function AddBusinessForm({ onSuccess, onCancel, initialData }: AddBusines
                                 onClick={() => selectGooglePlace(res)}
                                 className="w-full text-left p-3 hover:bg-brand-blue/20 transition-colors flex flex-col gap-1"
                             >
-                                <span className="font-bold text-sm">{res.name}</span>
-                                <span className="text-xs text-muted-foreground">{res.address}</span>
+                                <div className="flex justify-between items-start gap-2">
+                                    <div className="flex flex-col gap-1">
+                                        <span className="font-bold text-sm">{res.name}</span>
+                                        <span className="text-xs text-muted-foreground">{res.address}</span>
+                                    </div>
+                                    {res.photoReference && (
+                                        <img
+                                            src={getGooglePhotoUrl(res.photoReference, 100)}
+                                            alt=""
+                                            className="w-12 h-12 rounded-lg object-cover bg-white/5"
+                                        />
+                                    )}
+                                </div>
                             </button>
                         ))}
                     </div>
@@ -325,19 +360,24 @@ export function AddBusinessForm({ onSuccess, onCancel, initialData }: AddBusines
 
                     <div className="space-y-2">
                         <label className="text-sm font-medium">Categoría</label>
-                        <select
+                        <input
+                            list="categories-list"
+                            type="text"
                             className="w-full p-2 bg-muted/50 border border-white/10 rounded-lg focus:ring-2 focus:ring-primary/50 outline-none"
                             value={formData.category}
                             onChange={e => setFormData({ ...formData, category: e.target.value })}
-                        >
-                            <option>Restaurante</option>
-                            <option>Cafetería</option>
-                            <option>Bar</option>
-                            <option>Tienda</option>
-                            <option>Servicios</option>
-                            <option>Salud</option>
-                            <option>Otro</option>
-                        </select>
+                            placeholder="Escribe o selecciona una categoría..."
+                        />
+                        <datalist id="categories-list">
+                            <option value="Restaurante" />
+                            <option value="Cafetería" />
+                            <option value="Bar" />
+                            <option value="Tienda" />
+                            <option value="Servicios" />
+                            <option value="Salud" />
+                            <option value="Entretenimiento" />
+                            <option value="Educación" />
+                        </datalist>
                     </div>
 
                     <div className="space-y-2">
@@ -440,14 +480,34 @@ export function AddBusinessForm({ onSuccess, onCancel, initialData }: AddBusines
                     </div>
 
                     <div className="space-y-2 md:col-span-2">
-                        <label className="text-sm font-medium">URL de Imagen (Logo/Banner)</label>
-                        <input
-                            type="url"
-                            className="w-full p-2 bg-muted/50 border border-white/10 rounded-lg focus:ring-2 focus:ring-primary/50 outline-none"
-                            value={formData.image_url}
-                            onChange={e => setFormData({ ...formData, image_url: e.target.value })}
-                            placeholder="Ej: https://unsplash.com/foto..."
-                        />
+                        <label className="text-sm font-medium">Vista Previa de Imagen</label>
+                        <div className="flex gap-4 items-start">
+                            {formData.image_url && (
+                                <img
+                                    src={formData.image_url}
+                                    alt="Vista previa"
+                                    className="w-32 h-32 rounded-xl object-cover border border-white/10"
+                                />
+                            )}
+                            <div className="flex-1 space-y-2">
+                                <label className="text-xs text-muted-foreground uppercase">URL de Imagen (Logo/Banner)</label>
+                                <input
+                                    type="url"
+                                    className="w-full p-2 bg-muted/50 border border-white/10 rounded-lg focus:ring-2 focus:ring-primary/50 outline-none text-xs"
+                                    value={formData.image_url}
+                                    onChange={e => {
+                                        setFormData({ ...formData, image_url: e.target.value });
+                                        setSelectedPhotoRef(null); // Clear ref if manually changed
+                                    }}
+                                    placeholder="Ej: https://unsplash.com/foto..."
+                                />
+                                {selectedPhotoRef && (
+                                    <p className="text-[10px] text-brand-blue flex items-center gap-1">
+                                        <CheckCircle className="w-3 h-3" /> Imagen seleccionada de Google (Será guardada en tu storage)
+                                    </p>
+                                )}
+                            </div>
+                        </div>
                     </div>
 
                     <div className="space-y-2 md:col-span-2 border-t border-white/10 pt-4">
@@ -514,8 +574,9 @@ export function AddBusinessForm({ onSuccess, onCancel, initialData }: AddBusines
                             onChange={e => setFormData({ ...formData, plan_id: e.target.value })}
                         >
                             <option value="free">Gratuito</option>
+                            <option value="exchange">Intercambio</option>
+                            <option value="premium">Premium</option>
                             <option value="launch">Lanzamiento</option>
-                            <option value="featured">Destacado</option>
                         </select>
                     </div>
                 </div>

@@ -4,14 +4,34 @@ import { Search, MapPin, Star, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useBusinesses } from "../hooks/useBusinesses";
 import { getBusinessImage } from "../lib/businessImages";
+import { useAnalytics } from "../hooks/useAnalytics";
 
 export default function SearchPage() {
     const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
     const { businesses } = useBusinesses();
+    const { logEvent } = useAnalytics();
 
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedCategory, setSelectedCategory] = useState("Todos");
+
+    // Analytics: Log search term with debounce
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (searchTerm.trim().length > 2) {
+                logEvent('search', { term: searchTerm, source: 'search_bar' });
+            }
+        }, 1500); // Wait 1.5s after typing stops
+
+        return () => clearTimeout(timer);
+    }, [searchTerm, logEvent]);
+
+    // Analytics: Log category filter
+    useEffect(() => {
+        if (selectedCategory !== "Todos") {
+            logEvent('search', { category: selectedCategory, source: 'category_filter' });
+        }
+    }, [selectedCategory, logEvent]);
 
     // Get unique categories and sort them dynamically based on current businesses
     const categories = useMemo(() => {

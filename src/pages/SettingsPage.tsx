@@ -1,17 +1,15 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, Bell, User, ChevronRight, Moon, LogOut, Save, Loader2, ChevronDown, Lock, Trash2 } from "lucide-react";
+import { ArrowLeft, User, ChevronRight, LogOut, Save, Loader2, ChevronDown, Lock, Trash2 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { Button } from "../components/ui/Button";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
-import { useTheme } from "../context/ThemeContext";
 
 type SettingItem =
-    | { id?: string; type: 'toggle' | 'select'; icon: React.ReactNode; label: string; value?: any; onChange?: (val?: any) => void; onClick?: () => void; danger?: boolean; options?: { label: string, value: string }[] }
-    | { id?: string; type: 'link'; icon: React.ReactNode; label: string; onClick: () => void; value?: undefined; onChange?: undefined; danger?: undefined }
-    | { id?: string; type: 'button'; icon: React.ReactNode; label: string; onClick: () => void; danger: boolean; value?: undefined; onChange?: undefined }
-    | { id?: string; type: 'expandable'; icon: React.ReactNode; label: string; onClick: () => void; isOpen: boolean; danger?: undefined; value?: undefined; onChange?: undefined };
+    | { id?: string; type: 'link'; icon: React.ReactNode; label: string; onClick: () => void }
+    | { id?: string; type: 'button'; icon: React.ReactNode; label: string; onClick: () => void; danger: boolean }
+    | { id?: string; type: 'expandable'; icon: React.ReactNode; label: string; onClick: () => void; isOpen: boolean };
 
 interface SettingSection {
     title: string;
@@ -20,7 +18,6 @@ interface SettingSection {
 
 export default function SettingsPage() {
     const navigate = useNavigate();
-    const { theme, setTheme, fontSize, setFontSize } = useTheme();
 
     // Profile Data
     const [profile, setProfile] = useState<any>(null);
@@ -28,9 +25,6 @@ export default function SettingsPage() {
     const [saving, setSaving] = useState(false);
     const [formData, setFormData] = useState({ full_name: "", phone: "" });
     const [expandedItem, setExpandedItem] = useState<string | null>(null);
-
-    // Notifications
-    const [notificationsEnabled, setNotificationsEnabled] = useState(true);
 
     // Dialogs
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -60,7 +54,6 @@ export default function SettingsPage() {
                     full_name: data.full_name || "",
                     phone: data.phone || ""
                 });
-                setNotificationsEnabled(data.notifications_enabled ?? true);
             } else if (user) {
                 // Fallback if no profile row exists yet
                 setProfile({ id: user.id, email: user.email });
@@ -97,36 +90,12 @@ export default function SettingsPage() {
         }
     };
 
-    const handleToggleNotifications = async () => {
-        const newValue = !notificationsEnabled;
-        setNotificationsEnabled(newValue); // Optimistic update
-
-        if (!profile?.id) return;
-
-        try {
-            const { error } = await (supabase as any)
-                .from("profiles")
-                .update({ notifications_enabled: newValue })
-                .eq("id", profile.id);
-
-            if (error) {
-                setNotificationsEnabled(!newValue); // Revert on error
-                throw error;
-            }
-        } catch (error) {
-            console.error("Error updating notifications:", error);
-            alert("No se pudo guardar la configuración.");
-        }
-    };
-
     const confirmPasswordReset = async () => {
         setResetLoading(true);
         try {
-            // Fetch user directly to ensure we have the email
             const { data: { user }, error: userError } = await supabase.auth.getUser();
 
             if (userError || !user || !user.email) {
-                console.error("User fetch error:", userError);
                 alert("Error: No se pudo identificar al usuario. Intenta cerrar e iniciar sesión.");
                 setResetLoading(false);
                 setResetConfirmOpen(false);
@@ -134,7 +103,6 @@ export default function SettingsPage() {
             }
 
             const email = user.email;
-
             const { error } = await supabase.auth.resetPasswordForEmail(email, {
                 redirectTo: `${window.location.origin}/update-password`,
             });
@@ -153,11 +121,8 @@ export default function SettingsPage() {
 
     const handleDeleteAccount = async () => {
         try {
-            // Call the secure RPC function
             const { error } = await supabase.rpc('delete_own_account');
-
             if (error) throw error;
-
             await supabase.auth.signOut();
             alert("Tu cuenta ha sido eliminada.");
             navigate("/");
@@ -177,47 +142,6 @@ export default function SettingsPage() {
     };
 
     const sections: SettingSection[] = [
-        {
-            title: "Preferencias de Interfaz",
-            items: [
-                {
-                    type: "select",
-                    icon: <Moon className="w-5 h-5 text-purple-400" />,
-                    label: "Tema de la App",
-                    value: theme,
-                    onChange: (val) => setTheme(val as any),
-                    options: [
-                        { label: "Claro", value: "light" },
-                        { label: "Oscuro", value: "dark" },
-                        { label: "Sistema", value: "system" }
-                    ]
-                },
-                {
-                    type: "select",
-                    icon: <User className="w-5 h-5 text-blue-400" />,
-                    label: "Tamaño de Letra",
-                    value: fontSize,
-                    onChange: (val) => setFontSize(val as any),
-                    options: [
-                        { label: "Pequeño", value: "sm" },
-                        { label: "Normal", value: "base" },
-                        { label: "Grande", value: "lg" }
-                    ]
-                }
-            ]
-        },
-        {
-            title: "Notificaciones",
-            items: [
-                {
-                    type: "toggle",
-                    icon: <Bell className="w-5 h-5 text-yellow-400" />,
-                    label: "Notificaciones Push",
-                    value: notificationsEnabled,
-                    onChange: handleToggleNotifications
-                }
-            ]
-        },
         {
             title: "Cuenta y Seguridad",
             items: [
@@ -287,38 +211,17 @@ export default function SettingsPage() {
                             {section.items.map((item, itemIdx) => (
                                 <div key={itemIdx}>
                                     <div
-                                        className={`p-4 flex items-center justify-between ${item.type !== 'toggle' ? 'cursor-pointer hover:bg-white/5 transition-colors' : ''}`}
-                                        onClick={item.onClick || (item as any).onChange}
+                                        className="p-4 flex items-center justify-between cursor-pointer hover:bg-white/5 transition-colors"
+                                        onClick={item.onClick}
                                     >
                                         <div className="flex items-center gap-3">
-                                            <div className={`p-2 rounded-lg bg-white/5 ${item.danger ? 'bg-red-500/10' : ''}`}>
+                                            <div className={`p-2 rounded-lg bg-white/5 ${(item as any).danger ? 'bg-red-500/10' : ''}`}>
                                                 {item.icon}
                                             </div>
-                                            <span className={`font-medium ${item.danger ? 'text-red-400' : ''}`}>
+                                            <span className={`font-medium ${(item as any).danger ? 'text-red-400' : ''}`}>
                                                 {item.label}
                                             </span>
                                         </div>
-
-                                        {item.type === 'toggle' && (
-                                            <div
-                                                className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer ${item.value ? 'bg-primary' : 'bg-muted'}`}
-                                                onClick={item.onChange as any}
-                                            >
-                                                <div className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform ${item.value ? 'translate-x-5' : ''}`} />
-                                            </div>
-                                        )}
-
-                                        {item.type === 'select' && (
-                                            <select
-                                                className="bg-muted/50 border border-white/10 rounded-lg px-2 py-1 text-xs focus:ring-1 focus:ring-primary focus:outline-none"
-                                                value={item.value}
-                                                onChange={(e) => item.onChange?.(e.target.value)}
-                                            >
-                                                {item.options?.map(opt => (
-                                                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                                ))}
-                                            </select>
-                                        )}
 
                                         {(item.type === 'link' || item.type === 'button') && (
                                             <ChevronRight className="w-4 h-4 text-muted-foreground" />
@@ -385,11 +288,11 @@ export default function SettingsPage() {
                     </motion.div>
                 ))}
 
-                <div className="text-center pt-8 pb-4">
-                    <p className="text-xs text-muted-foreground">
-                        Directorio Zona v1.2.0
+                <div className="text-center pt-8 pb-12">
+                    <p className="text-xs text-muted-foreground font-semibold">
+                        Directorio Zona <span className="text-primary/50">v1.0.0</span>
                     </p>
-                    <p className="text-[10px] text-muted-foreground/50 mt-1">
+                    <p className="text-[10px] text-muted-foreground/50 mt-1 uppercase tracking-tighter">
                         Hecho con ❤️ en Monterrey
                     </p>
                 </div>

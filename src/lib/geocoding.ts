@@ -7,7 +7,10 @@ interface GeocodingResult {
     displayName: string;
     success: boolean;
     error?: string;
+    photoReference?: string;
 }
+
+const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
 // Rate limiting - only allow 1 request per second
 let lastRequestTime = 0;
@@ -143,4 +146,64 @@ export async function reverseGeocode(
             error: error.message || 'Error al buscar la dirección'
         };
     }
+}
+
+/**
+ * Searches for a business using Google Places Text Search API
+ * @param query Business name or search term
+ * @param location Optional "lat,lng" to bias results
+ * @returns Array of matching results with photo references
+ */
+export async function searchGooglePlaces(
+    query: string,
+    location?: { lat: number, lng: number }
+): Promise<any[]> {
+    if (!GOOGLE_MAPS_API_KEY) {
+        console.error("Missing Google Maps API Key");
+        return [];
+    }
+
+    try {
+        const baseUrl = "https://maps.googleapis.com/maps/api/place/textsearch/json";
+        const params = new URLSearchParams({
+            query: query,
+            key: GOOGLE_MAPS_API_KEY,
+            language: 'es',
+            region: 'mx'
+        });
+
+        if (location) {
+            params.append('location', `${location.lat},${location.lng}`);
+            params.append('radius', '5000'); // 5km search radius
+        }
+
+        const response = await fetch(`${baseUrl}?${params.toString()}`);
+        const data = await response.json();
+
+        if (data.status !== "OK") {
+            console.warn("Google Places API error:", data.status, data.error_message);
+            return [];
+        }
+
+        return data.results.map((place: any) => ({
+            name: place.name,
+            address: place.formatted_address,
+            lat: place.geometry.location.lat,
+            lng: place.geometry.location.lng,
+            photoReference: place.photos?.[0]?.photo_reference,
+            rating: place.rating,
+            userRatingsTotal: place.user_ratings_total,
+            placeId: place.place_id
+        }));
+    } catch (error) {
+        console.error("Error calling Google Places API:", error);
+        return [];
+    }
+}
+
+/**
+ * Gets a direct Photo URL from a Google photo reference
+ */
+export function getGooglePhotoUrl(photoReference: string, maxWidth: number = 800): string {
+    return `https://maps.googleapis.com/maps/api/place/photo?maxwidth=${maxWidth}&photoreference=${photoReference}&key=${GOOGLE_MAPS_API_KEY}`;
 }

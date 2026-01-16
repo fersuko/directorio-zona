@@ -57,10 +57,11 @@ export function ReviewModal({ isOpen, onClose, businessName, onSubmit, isSubmitt
                         className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100]"
                     />
                     <motion.div
-                        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                        className="fixed left-4 right-4 top-1/2 -translate-y-1/2 bg-card border border-border rounded-2xl p-6 z-[101] max-w-md mx-auto shadow-2xl"
+
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        className="fixed inset-0 z-[101] m-auto w-[calc(100%-2rem)] max-w-md h-fit max-h-[90vh] bg-card border border-border rounded-2xl p-6 shadow-2xl overflow-y-auto scrollbar-hide"
                     >
                         <button
                             onClick={onClose}

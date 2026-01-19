@@ -12,7 +12,7 @@ export default defineConfig({
       manifest: {
         name: 'Directorio Zona',
         short_name: 'Zona',
-        description: 'Directorio comercial y turístico de la zona.',
+        description: 'Directorio comercial y turístico de Monterrey Centro.',
         theme_color: '#0f172a',
         icons: [
           {
@@ -31,5 +31,21 @@ export default defineConfig({
   ],
   server: {
     host: true,
+    proxy: {
+      '/google-photos': {
+        target: 'https://maps.googleapis.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/google-photos/, ''),
+        headers: {
+          'Referer': 'https://maps.googleapis.com/',
+          'Origin': 'https://maps.googleapis.com'
+        }
+      },
+      '/google-images': {
+        target: 'https://lh3.googleusercontent.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/google-images/, ''),
+      }
+    }
   },
 })

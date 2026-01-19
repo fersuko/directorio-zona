@@ -1,7 +1,7 @@
 {
   "name": "directorio-zona",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.86.0",
+    "@upstash/context7-mcp": "^2.1.0",
     "browser-image-compression": "^2.0.2",
     "canvas-confetti": "^1.9.4",
     "class-variance-authority": "^0.7.1",

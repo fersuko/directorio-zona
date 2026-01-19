@@ -40,7 +40,7 @@ export default function AdminDashboard() {
     const [leadToConvert, setLeadToConvert] = useState<any>(null);
     const [editingBusiness, setEditingBusiness] = useState<Business | null>(null);
     const [transferData, setTransferData] = useState<{ isOpen: boolean; businessId?: string; businessName?: string }>({ isOpen: false });
-    const [deleteConfirm, setDeleteConfirm] = useState<{ type: 'business' | 'user' | 'lead'; id: any; name: string } | null>(null);
+    const [deleteConfirm, setDeleteConfirm] = useState<{ type: 'business' | 'user' | 'lead'; id: any; name: string; count?: number } | null>(null);
 
     // Filters State
     const [searchTerm, setSearchTerm] = useState("");
@@ -206,6 +206,7 @@ export default function AdminDashboard() {
     };
 
     const handleDelete = (id: string, name: string) => setDeleteConfirm({ type: 'business', id, name });
+    const handleBulkDelete = (ids: string[]) => setDeleteConfirm({ type: 'business', id: ids, name: `${ids.length} negocios`, count: ids.length });
     const handleDeleteUser = (id: string, name: string) => setDeleteConfirm({ type: 'user', id, name });
     const handleDeleteLead = (id: string) => setDeleteConfirm({ type: 'lead', id, name: 'Solicitud' });
 
@@ -217,9 +218,13 @@ export default function AdminDashboard() {
             let error;
 
             if (type === 'business') {
-                const { error: err } = await supabase.from("businesses").delete().eq('id', id);
+                const query = supabase.from("businesses").delete();
+                const { error: err } = Array.isArray(id) ? await query.in('id', id) : await query.eq('id', id);
                 error = err;
-                if (!error) setBusinesses(prev => prev.filter(b => b.id !== id));
+                if (!error) {
+                    const idsToRemove = Array.isArray(id) ? id : [id];
+                    setBusinesses(prev => prev.filter(b => !idsToRemove.includes(b.id)));
+                }
             } else if (type === 'user') {
                 // Call the secure admin_delete_user RPC
                 const { error: err } = await (supabase as any).rpc('admin_delete_user', { target_user_id: id });
@@ -441,6 +446,7 @@ export default function AdminDashboard() {
                                 onAssignOwner={handleAssignOwner}
                                 onEdit={handleEdit}
                                 onDelete={handleDelete}
+                                onBulkDelete={handleBulkDelete}
                             />
                         </>
                     )}

@@ -6,6 +6,7 @@ import { useGeolocation } from "../hooks/useGeolocation";
 import { useBusinesses } from "../hooks/useBusinesses";
 import "leaflet/dist/leaflet.css";
 import { Icon } from "leaflet";
+import { MONTERREY_CENTRO } from "../constants/geo";
 // Fix for default marker icon in React Leaflet
 import iconUrl from "leaflet/dist/images/marker-icon.png";
 import iconRetinaUrl from "leaflet/dist/images/marker-icon-2x.png";
@@ -20,7 +21,7 @@ const defaultIcon = new Icon({
 });
 
 // Monterrey Centro
-const CENTER = [25.669, -100.313] as [number, number];
+const CENTER = [MONTERREY_CENTRO.lat, MONTERREY_CENTRO.lng] as [number, number];
 
 export default function MapPage() {
     const navigate = useNavigate();

@@ -20,6 +20,28 @@ export default function Home() {
         logEvent('page_view', { page: 'home' });
     }, [logEvent]);
 
+    // Helper for category translations and icons
+    const CATEGORY_MAP: Record<string, { label: string; icon: string }> = {
+        'Restaurante': { label: 'Restaurantes', icon: '🍽️' },
+        'Cafetería': { label: 'Cafeterías', icon: '☕' },
+        'Gimnasio': { label: 'Gimnasio', icon: '💪' },
+        'Tienda': { label: 'Tiendas', icon: '🛒' },
+        'Bar': { label: 'Bares', icon: '🍹' },
+        'Belleza': { label: 'Belleza', icon: '✂️' },
+        'Salud': { label: 'Salud', icon: '🏥' },
+        'Car repair': { label: 'Talleres', icon: '🚗' },
+        'Laundry': { label: 'Lavandería y Tintorería', icon: '🧺' },
+        'Point of interest': { label: 'Interés', icon: '📍' },
+        'Lodging': { label: 'Hospedaje', icon: '🏨' },
+        'Real estate agency': { label: 'Bienes Raíces', icon: '🏠' },
+        'Veterinary care': { label: 'Veterinaria', icon: '🐾' },
+        'Default': { label: 'Otros', icon: '🏪' }
+    };
+
+    const getCategoryInfo = (category: string) => {
+        return CATEGORY_MAP[category] || { label: category, icon: CATEGORY_MAP['Default'].icon };
+    };
+
     const premiumBusinesses = businesses.filter(b => b.isPremium);
     const regularBusinesses = businesses.filter(b => !b.isPremium);
 
@@ -76,39 +98,32 @@ export default function Home() {
                     )
                         .sort(([, a], [, b]) => b - a)
                         .slice(0, 10)
-                        .map(([category, count], i) => (
-                            <motion.div
-                                key={category}
-                                initial={{ opacity: 0, scale: 0.9 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                transition={{ delay: i * 0.05 }}
-                                onClick={() => {
-                                    logEvent('search', { category: category, source: 'home_chips' });
-                                    navigate(`/search?category=${encodeURIComponent(category)}`);
-                                }}
-                                className="flex flex-col items-center gap-2 cursor-pointer group min-w-[70px]"
-                            >
-                                <div className="w-14 h-14 rounded-2xl bg-card border border-border flex items-center justify-center text-xl group-hover:scale-105 transition-transform shadow-sm relative">
-                                    <span className="text-2xl">
-                                        {category === 'Restaurante' ? '🍽️' :
-                                            category === 'Cafetería' ? '☕' :
-                                                category === 'Gimnasio' ? '💪' :
-                                                    category === 'Ferretería' ? '🔧' :
-                                                        category === 'Bar' ? '🍻' :
-                                                            category === 'Ropa' ? '👕' :
-                                                                category === 'Estética/Barbería' ? '💇' :
-                                                                    category === 'Tienda de Abarrotes' ? '🏪' :
-                                                                        '🏪'}
-                                    </span>
-                                    <div className="absolute -top-1 -right-1 bg-primary text-[10px] text-primary-foreground w-5 h-5 rounded-full flex items-center justify-center font-bold border border-background">
-                                        {count}
+                        .map(([category, count], i) => {
+                            const { label, icon } = getCategoryInfo(category);
+                            return (
+                                <motion.div
+                                    key={category}
+                                    initial={{ opacity: 0, scale: 0.9 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    transition={{ delay: i * 0.05 }}
+                                    onClick={() => {
+                                        logEvent('search', { category: category, source: 'home_chips' });
+                                        navigate(`/search?category=${encodeURIComponent(category)}`);
+                                    }}
+                                    className="flex flex-col items-center gap-2 cursor-pointer group min-w-[70px]"
+                                >
+                                    <div className="w-14 h-14 rounded-2xl bg-card border border-border flex items-center justify-center text-xl group-hover:scale-105 transition-transform shadow-sm relative">
+                                        <span className="text-2xl">{icon}</span>
+                                        <div className="absolute -top-1 -right-1 bg-primary text-[10px] text-primary-foreground w-5 h-5 rounded-full flex items-center justify-center font-bold border border-background">
+                                            {count}
+                                        </div>
                                     </div>
-                                </div>
-                                <span className="text-[10px] font-medium text-muted-foreground text-center leading-tight max-w-[70px] truncate">
-                                    {category}
-                                </span>
-                            </motion.div>
-                        ))}
+                                    <span className="text-[10px] font-medium text-muted-foreground text-center leading-tight max-w-[70px] truncate">
+                                        {label}
+                                    </span>
+                                </motion.div>
+                            );
+                        })}
                 </div>
             </section>
 
@@ -162,8 +177,8 @@ export default function Home() {
                 </div>
                 <div className="space-y-3">
                     {regularBusinesses
-                        .map((b: Business) => ({ ...b, rating: 4 + Math.random() })) // Mock ratings for now
-                        .sort((a: any, b: any) => b.rating - a.rating)
+                        .map((b: Business) => ({ ...b, rating: b.rating || (4 + Math.random()) }))
+                        .sort((a: any, b: any) => (b.rating || 0) - (a.rating || 0))
                         .slice(0, 5)
                         .map((business: any, i: number) => (
                             <motion.div
@@ -186,7 +201,7 @@ export default function Home() {
                                         <h3 className="font-medium truncate">{business.name}</h3>
                                         <div className="flex items-center gap-1 bg-yellow-500/10 px-1.5 py-0.5 rounded text-[10px] text-yellow-500 font-bold">
                                             <Star className="w-3 h-3 fill-yellow-500" />
-                                            {business.rating ? business.rating.toFixed(1) : "N/A"}
+                                            {business.rating ? (Number(business.rating)).toFixed(1) : "N/A"}
                                         </div>
                                     </div>
                                     <p className="text-xs text-muted-foreground truncate">{business.category}</p>

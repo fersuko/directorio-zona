@@ -3,16 +3,18 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { MapPin, Navigation, Tag } from "lucide-react";
 import { useGeolocation } from "../hooks/useGeolocation";
+import { useBusinesses } from "../hooks/useBusinesses";
+import { getBusinessImage } from "../lib/businessImages";
 import { calculateDistance, formatDistance } from "../utils/distance";
-import businessesData from "../data/businesses.json";
 import type { Business } from "../types";
 import { Button } from "../components/ui/Button";
 
-const businesses = businessesData as Business[];
-
 export default function PromosPage() {
     const navigate = useNavigate();
-    const { coordinates, loading, error, getLocation } = useGeolocation();
+    const { coordinates, loading: geoLoading, error, getLocation } = useGeolocation();
+    const { businesses, loading: businessesLoading } = useBusinesses();
+
+    const loading = geoLoading || businessesLoading;
 
     const nearbyBusinesses = useMemo(() => {
         if (!coordinates) return [];
@@ -27,9 +29,8 @@ export default function PromosPage() {
                     business.lng
                 ),
             }))
-            .sort((a, b) => a.distance - b.distance)
-            .slice(0, 10); // Show top 10 nearest
-    }, [coordinates]);
+            .sort((a, b) => a.distance - b.distance);
+    }, [coordinates, businesses]);
 
     return (
         <div className="p-4 pb-24 min-h-screen bg-background space-y-6">
@@ -73,7 +74,7 @@ export default function PromosPage() {
                         >
                             <div className="relative h-32">
                                 <img
-                                    src={business.image || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&q=80"}
+                                    src={getBusinessImage(business)}
                                     alt={business.name}
                                     className="w-full h-full object-cover"
                                 />

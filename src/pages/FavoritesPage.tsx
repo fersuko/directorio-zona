@@ -5,6 +5,8 @@ import { motion } from "framer-motion";
 import { supabase } from "../lib/supabase";
 import { Button } from "../components/ui/Button";
 import { getBusinessImage } from "../lib/businessImages";
+import { calculateDistance } from "../utils/distance";
+import { MONTERREY_CENTRO, MAX_RADIUS_KM } from "../constants/geo";
 import type { Business } from "../types";
 
 export default function FavoritesPage() {
@@ -32,8 +34,19 @@ export default function FavoritesPage() {
 
             if (error) throw error;
 
-            // Map data to Flat Business array
-            const favs = data.map((item: any) => item.businesses).filter(Boolean);
+            // Map data to Flat Business array and filter by distance
+            const favs = data
+                .map((item: any) => item.businesses)
+                .filter((biz: any) => {
+                    if (!biz) return false;
+                    const lat = Number(biz.lat);
+                    const lng = Number(biz.lng);
+                    if (!lat || !lng || isNaN(lat) || isNaN(lng)) return false;
+
+                    const dist = calculateDistance(MONTERREY_CENTRO.lat, MONTERREY_CENTRO.lng, lat, lng);
+                    return dist <= MAX_RADIUS_KM;
+                });
+
             setBusinesses(favs);
         } catch (error) {
             console.error("Error fetching favorites:", error);

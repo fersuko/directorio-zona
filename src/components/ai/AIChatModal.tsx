@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { X, Send, Bot, User, Sparkles } from "lucide-react";
+import { X, Send, User, Bot } from "lucide-react";
 import { Button } from "../ui/Button";
 import { motion, AnimatePresence } from "framer-motion";
 import { useBusinesses } from "../../hooks/useBusinesses";
@@ -10,13 +10,27 @@ interface Message {
     sender: "user" | "ai";
 }
 
+function ZonaBotAvatar({ className = "w-10 h-10" }: { className?: string }) {
+    return (
+        <div className={`relative ${className} flex items-center justify-center overflow-visible`}>
+            {/* The circular background with brand gradient */}
+            <div className="absolute inset-0 rounded-full bg-gradient-to-br from-[#0033CC] to-[#FF0000] shadow-lg" />
+
+            {/* The robot face (original icon) in white */}
+            <div className="relative z-10 w-[60%] h-[60%] flex items-center justify-center text-white">
+                <Bot className="w-full h-full" strokeWidth={2} />
+            </div>
+        </div>
+    );
+}
+
 export function AIChatModal() {
     const { businesses } = useBusinesses();
     const [isOpen, setIsOpen] = useState(false);
     const [messages, setMessages] = useState<Message[]>([
         {
             id: 1,
-            text: "¡Qué onda compadre! Soy ZonaBot. ¿Buscas algo matón en el centro de Monterrey? 🌮🍺",
+            text: "¡Qué onda compadre! Soy ZonaBot, tu guía matón en el mero centro de Monterrey. 🌮🍺 ¿Qué se te antoja hoy?",
             sender: "ai",
         },
     ]);
@@ -100,29 +114,21 @@ export function AIChatModal() {
             {/* Floating Button with "Clippy" style animation */}
             <motion.button
                 animate={{
-                    y: [0, -10, 0],
-                    rotate: [0, -5, 5, 0],
+                    y: [0, -8, 0],
+                    scale: [1, 1.05, 1],
                 }}
                 transition={{
-                    duration: 4,
+                    duration: 3,
                     repeat: Infinity,
                     ease: "easeInOut"
                 }}
-                whileHover={{ scale: 1.1, y: -15 }}
-                whileTap={{ scale: 0.9 }}
+                whileHover={{ scale: 1.15, rotate: [0, -5, 5, 0] }}
+                whileTap={{ scale: 0.95 }}
                 onClick={() => setIsOpen(true)}
-                className={`fixed bottom-20 right-4 z-40 w-14 h-14 rounded-full bg-gradient-to-r from-brand-blue to-brand-red shadow-lg flex items-center justify-center text-white transition-all overflow-hidden ${isOpen ? "scale-0 opacity-0" : "scale-100 opacity-100"
+                className={`fixed bottom-20 right-4 z-40 w-16 h-16 rounded-full shadow-[0_8px_30px_rgb(0,0,0,0.12)] flex items-center justify-center transition-all overflow-visible ${isOpen ? "scale-0 opacity-0" : "scale-100 opacity-100"
                     }`}
             >
-                <div className="absolute inset-0 bg-white/10 animate-pulse" />
-                <Bot className="w-7 h-7 relative z-10" />
-                <motion.div
-                    animate={{ opacity: [0.2, 0.5, 0.2] }}
-                    transition={{ duration: 2, repeat: Infinity }}
-                    className="absolute -top-1 -right-1"
-                >
-                    <Sparkles className="w-4 h-4 text-yellow-300" />
-                </motion.div>
+                <ZonaBotAvatar className="w-12 h-12" />
             </motion.button>
 
             {/* Chat Modal */}
@@ -134,17 +140,20 @@ export function AIChatModal() {
                         exit={{ opacity: 0, y: 100, scale: 0.9 }}
                         className="fixed bottom-4 right-4 z-50 w-[90vw] max-w-sm h-[500px] bg-background/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl flex flex-col overflow-hidden"
                     >
-                        {/* Header */}
-                        <div className="p-4 border-b border-white/10 bg-white/5 flex justify-between items-center">
-                            <div className="flex items-center gap-2">
-                                <div className="w-8 h-8 rounded-full bg-brand-blue/10 flex items-center justify-center">
-                                    <Bot className="w-5 h-5 text-brand-blue" />
-                                </div>
+                        <div className="p-4 border-b border-white/10 bg-white/5 flex justify-between items-center bg-gradient-to-r from-slate-900 to-slate-800">
+                            <div className="flex items-center gap-3">
+                                <motion.div
+                                    animate={{ rotate: [0, -10, 10, 0] }}
+                                    transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
+                                    className="flex items-center justify-center overflow-visible"
+                                >
+                                    <ZonaBotAvatar className="w-10 h-10 shadow-lg" />
+                                </motion.div>
                                 <div>
-                                    <h3 className="font-bold text-sm">ZonaBot</h3>
-                                    <p className="text-xs text-green-400 flex items-center gap-1">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-                                        Al cien
+                                    <h3 className="font-bold text-sm text-white">ZonaBot</h3>
+                                    <p className="text-[10px] text-green-400 flex items-center gap-1 font-medium">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                                        LISTO PA' LA CHAMBA
                                     </p>
                                 </div>
                             </div>
@@ -165,15 +174,15 @@ export function AIChatModal() {
                                         }`}
                                 >
                                     <div
-                                        className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center ${msg.sender === "user"
-                                            ? "bg-brand-red/10 text-brand-red"
-                                            : "bg-brand-blue/10 text-brand-blue"
+                                        className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center overflow-visible ${msg.sender === "user"
+                                            ? "bg-brand-red/10 text-brand-red border border-brand-red/20"
+                                            : ""
                                             }`}
                                     >
                                         {msg.sender === "user" ? (
                                             <User className="w-4 h-4" />
                                         ) : (
-                                            <Bot className="w-4 h-4" />
+                                            <ZonaBotAvatar className="w-full h-full" />
                                         )}
                                     </div>
                                     <div
@@ -188,8 +197,8 @@ export function AIChatModal() {
                             ))}
                             {isTyping && (
                                 <div className="flex gap-2">
-                                    <div className="w-8 h-8 rounded-full bg-brand-blue/10 flex-shrink-0 flex items-center justify-center">
-                                        <Bot className="w-4 h-4 text-brand-blue" />
+                                    <div className="w-8 h-8 flex-shrink-0 flex items-center justify-center overflow-visible">
+                                        <ZonaBotAvatar className="w-full h-full" />
                                     </div>
                                     <div className="bg-muted p-3 rounded-2xl rounded-tl-none flex gap-1 items-center">
                                         <span className="w-1.5 h-1.5 bg-muted-foreground/50 rounded-full animate-bounce [animation-delay:-0.3s]" />

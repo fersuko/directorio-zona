@@ -11,6 +11,7 @@ import { supabase } from "../lib/supabase";
 import L from "leaflet";
 import { useAnalytics } from "../hooks/useAnalytics";
 import { checkContent } from "../utils/moderation";
+import { getBusinessImage } from "../lib/businessImages";
 
 // Fix for default marker icon
 import icon from 'leaflet/dist/images/marker-icon.png';
@@ -297,7 +298,7 @@ export default function BusinessDetailPage() {
             {/* Hero Section */}
             <div className="h-52 w-full relative overflow-hidden">
                 <img
-                    src={business.image_url || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&q=80"}
+                    src={getBusinessImage(business)}
                     alt={business.name}
                     className="w-full h-full object-cover"
                 />
@@ -337,41 +338,6 @@ export default function BusinessDetailPage() {
                                 <Star className="w-5 h-5 text-yellow-500 fill-yellow-500" />
                             </div>
                         )}
-                    </div>
-
-                    {/* Rating Row (Added) */}
-                    <div className="flex items-center justify-between py-1">
-                        <div className="flex items-center gap-4">
-                            <div className="flex items-center gap-1.5">
-                                <span className="text-2xl font-bold text-white">
-                                    {reviews.length > 0 ? (reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length).toFixed(1) : "N/A"}
-                                </span>
-                                <div className="flex items-center gap-0.5">
-                                    {[...Array(5)].map((_, i) => (
-                                        <Star
-                                            key={i}
-                                            className={`w-4 h-4 ${reviews.length > 0 && i < Math.round(reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length) ? "fill-yellow-500 text-yellow-500" : "text-muted-foreground/30"}`}
-                                        />
-                                    ))}
-                                </div>
-                            </div>
-                            <div className="h-8 w-px bg-white/10" />
-                            <button onClick={() => {
-                                const el = document.getElementById('reviews-section');
-                                if (el) el.scrollIntoView({ behavior: 'smooth' });
-                            }} className="text-sm text-primary hover:underline">
-                                {reviews.length} {reviews.length === 1 ? 'opinión' : 'opiniones'}
-                            </button>
-                        </div>
-
-                        <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-8 text-xs border-primary/50 text-primary hover:bg-primary/10"
-                            onClick={() => setShowReviewModal(true)}
-                        >
-                            Calificar
-                        </Button>
                     </div>
 
                     <div className="flex items-center gap-2 text-sm text-muted-foreground border-t border-white/5 pt-3">
@@ -504,12 +470,38 @@ export default function BusinessDetailPage() {
                     <div className="flex flex-col gap-4">
                         <div className="flex items-center justify-between">
                             <h2 className="font-semibold text-lg">Reseñas y Opiniones</h2>
-                            <Button variant="ghost" size="sm" onClick={() => setShowReviewModal(true)} className="text-primary hover:bg-primary/10">
-                                Escribir reseña
-                            </Button>
                         </div>
 
-                        {/* Rating Summary */}
+                        {/* Rating Row (Relocated here from Header) */}
+                        <div className="glass-card p-5 rounded-xl border border-white/5 space-y-4">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-4">
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="text-4xl font-bold text-white">
+                                            {reviews.length > 0 ? (reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length).toFixed(1) : "N/A"}
+                                        </span>
+                                        <div className="flex items-end mb-1">
+                                            <Star className="w-8 h-8 text-yellow-500 fill-yellow-500" />
+                                        </div>
+                                    </div>
+                                    <div className="h-10 w-px bg-white/10" />
+                                    <div className="flex flex-col">
+                                        <span className="text-sm font-medium text-white">{reviews.length} opiniones</span>
+                                        <span className="text-[10px] text-muted-foreground uppercase tracking-widest">Puntuación Total</span>
+                                    </div>
+                                </div>
+
+                                <Button
+                                    size="sm"
+                                    className="h-9 px-4 bg-primary hover:bg-primary/90 text-white font-bold transition-all active:scale-95"
+                                    onClick={() => setShowReviewModal(true)}
+                                >
+                                    Escribir Reseña
+                                </Button>
+                            </div>
+                        </div>
+
+                        {/* Rating Summary stats */}
                         {!loadingReviews && reviews.length > 0 && (
                             <div className="glass-card p-5 rounded-xl flex items-center justify-between">
                                 <div className="flex flex-col">
@@ -522,7 +514,6 @@ export default function BusinessDetailPage() {
                                     </span>
                                 </div>
                                 <div className="flex gap-1">
-                                    {/* Simple distribution or just stars visual */}
                                     <div className="flex flex-col items-end gap-1 text-xs text-muted-foreground">
                                         <div className="flex items-center gap-1">
                                             <span>5</span> <Star className="w-3 h-3 text-yellow-500" />
@@ -564,7 +555,7 @@ export default function BusinessDetailPage() {
                         ) : reviews.length === 0 ? (
                             <p className="text-sm text-muted-foreground text-center py-4">Sé el primero en opinar sobre este lugar.</p>
                         ) : (
-                            reviews.map((review) => (
+                            reviews.map((review: any) => (
                                 <div key={review.id} className="glass-card p-4 rounded-xl space-y-2">
                                     <div className="flex justify-between items-start">
                                         <div className="flex items-center gap-2">

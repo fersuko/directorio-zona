@@ -174,7 +174,7 @@ export async function searchGooglePlaces(
 
         if (location) {
             params.append('location', `${location.lat},${location.lng}`);
-            params.append('radius', '5000'); // 5km search radius
+            params.append('radius', '2000'); // 2km search radius
         }
 
         const response = await fetch(`${baseUrl}?${params.toString()}`);

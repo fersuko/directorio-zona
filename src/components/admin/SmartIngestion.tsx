@@ -5,6 +5,8 @@ import { Search, MapPin, Download, Loader2, CheckCircle, AlertTriangle, Store, S
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { uploadBusinessPhoto } from '../../lib/storage';
+import { calculateDistance } from '../../utils/distance';
+import { MONTERREY_CENTRO, MAX_RADIUS_KM } from '../../constants/geo';
 
 interface GooglePlace {
     place_id: string;
@@ -23,6 +25,8 @@ interface GooglePlace {
         getUrl: (opts: { maxWidth: number; maxHeight: number }) => string;
         photo_reference?: string;
     }[];
+    formatted_phone_number?: string;
+    website?: string;
 }
 
 declare var google: any;
@@ -42,8 +46,6 @@ export const SmartIngestion = ({ currentUserId }: Props) => {
 
     const [currentImport, setCurrentImport] = useState<string>("");
 
-    // CP 64000 Centro de Monterrey Coordinates
-    const MONTERREY_CENTRO = { lat: 25.6714, lng: -100.3097 };
 
     const searchPlaces = () => {
         if (!(window as any).google?.maps || !searchTerm) return;
@@ -54,19 +56,38 @@ export const SmartIngestion = ({ currentUserId }: Props) => {
 
         const service = new google.maps.places.PlacesService(document.createElement('div'));
         const allResults: GooglePlace[] = [];
-        const MAX_PAGES = 3; // 3 pages * 20 results = 60 results max
+        const MAX_PAGES = 1; // Solo 1 página = 20 resultados máximo para ahorrar costos
         let pageCount = 0;
 
         const request = {
             query: searchTerm,
             location: new (window as any).google.maps.LatLng(MONTERREY_CENTRO),
-            radius: 5000,
+            radius: MAX_RADIUS_KM * 1000, // 2000m
         };
 
         const callback = (places: any[] | null, status: any, pagination: any) => {
             if (status === (window as any).google.maps.places.PlacesServiceStatus.OK && places) {
-                // Filter and accumulate
-                const goodPlaces = places.filter(p => (p.rating || 0) >= 3.5 || (p.user_ratings_total || 0) > 5);
+                // Filter by quality markers (Google status/rating)
+                const qualityPlaces = places.filter(p => (p.rating || 0) >= 3.5 || (p.user_ratings_total || 0) > 5);
+
+                // Hyper-Strict Geographical Post-Filtering (ABSOLUTE 2KM)
+                const goodPlaces = qualityPlaces.filter(p => {
+                    const lat = typeof p.geometry?.location.lat === 'function' ? p.geometry.location.lat() : p.geometry?.location.lat;
+                    const lng = typeof p.geometry?.location.lng === 'function' ? p.geometry.location.lng() : p.geometry?.location.lng;
+
+                    if (!lat || !lng) return false;
+
+                    const dist = calculateDistance(MONTERREY_CENTRO.lat, MONTERREY_CENTRO.lng, lat, lng);
+
+                    if (dist > MAX_RADIUS_KM) {
+                        console.log(`🚫 Filtrado por distancia extra-estricta (> ${MAX_RADIUS_KM}km): ${p.name} a ${dist.toFixed(2)}km`);
+                        return false;
+                    }
+
+                    console.log(`✅ Aceptado por proximidad: ${p.name} a ${dist.toFixed(2)}km`);
+                    return true;
+                });
+
                 allResults.push(...(goodPlaces as any[]));
                 setResults([...allResults]); // Partial update for better UX
 
@@ -96,6 +117,14 @@ export const SmartIngestion = ({ currentUserId }: Props) => {
         setSelectedIds(newSet);
     };
 
+    const handleSelectAll = () => {
+        if (selectedIds.size === results.length && results.length > 0) {
+            setSelectedIds(new Set());
+        } else {
+            setSelectedIds(new Set(results.map(r => r.place_id)));
+        }
+    };
+
     const handleImport = async () => {
         const toImport = results.filter(r => selectedIds.has(r.place_id));
         if (toImport.length === 0) return;
@@ -120,6 +149,20 @@ export const SmartIngestion = ({ currentUserId }: Props) => {
                 setCurrentImport(`Importando (${i + 1}/${toImport.length}): ${place.name}...`);
 
                 try {
+                    // PRE-CHECK: Avoid duplicates by Name and Address
+                    const { data: existing } = await supabase
+                        .from('businesses')
+                        .select('id')
+                        .eq('name', place.name)
+                        .eq('address', place.formatted_address)
+                        .maybeSingle();
+
+                    if (existing) {
+                        console.log(`⏩ Saltando duplicado: ${place.name}`);
+                        successCount++; // Count as success to not show as "error" per se
+                        continue;
+                    }
+
                     // Normalize Category
                     let category = 'Otro';
 
@@ -169,10 +212,25 @@ export const SmartIngestion = ({ currentUserId }: Props) => {
 
                     // Persistence of images via shared storage logic
                     let finalImageUrl = null;
-                    const photoRef = place.photos?.[0]?.photo_reference;
-                    if (photoRef) {
-                        // We use the reference string directly; our storage helper will build the URL
-                        finalImageUrl = await uploadBusinessPhoto(photoRef, place.name);
+                    const primaryPhoto = place.photos?.[0];
+                    if (primaryPhoto) {
+                        // Get the transient Google URL directly from the Places API photo object
+                        const transientUrl = primaryPhoto.getUrl({ maxWidth: 1600, maxHeight: 1600 });
+                        console.log(`📷 URL transitoria obtenida para ${place.name}: ${transientUrl.substring(0, 50)}...`);
+
+                        if (transientUrl) {
+                            setCurrentImport(`💾 Guardando foto para: ${place.name}...`);
+                            // Pass the full transient URL directly - storage.ts will handle it
+                            const uploadedUrl = await uploadBusinessPhoto(transientUrl, place.name);
+
+                            if (uploadedUrl) {
+                                finalImageUrl = uploadedUrl;
+                                console.log(`✅ Imagen guardada permanentemente para ${place.name}`);
+                            } else {
+                                console.warn(`⚠️ Foto no pudo subirse a Storage para "${place.name}".`);
+                                finalImageUrl = null;
+                            }
+                        }
                     }
 
                     const { error } = await (supabase.from('businesses') as any).insert({
@@ -188,13 +246,19 @@ export const SmartIngestion = ({ currentUserId }: Props) => {
                         is_premium: false,
                         plan_id: 'free',
                         owner_id: ownerId,
-                        image_url: finalImageUrl
+                        phone: place.formatted_phone_number,
+                        website: place.website,
+                        image_url: finalImageUrl,
+                        metadata: {
+                            google_place_id: place.place_id,
+                            google_photo_ref: (place.photos?.[0] as any)?.photo_reference
+                        }
                     });
 
                     if (error) throw error;
                     successCount++;
                 } catch (err: any) {
-                    console.error("Failed to import:", place.name, err);
+                    console.error("Failed to import:", err);
                     failCount++;
                 }
             }
@@ -205,6 +269,66 @@ export const SmartIngestion = ({ currentUserId }: Props) => {
             setCurrentImport("");
             setImportStats({ success: successCount, failed: failCount });
             if (successCount > 0) setSelectedIds(new Set()); // Only clear if we actually imported something
+        }
+    };
+
+    const repairExistingImages = async () => {
+        if (!confirm("Esto buscará negocios con imágenes rotas/temporales e intentará guardarlas permanentemente. ¿Continuar?")) return;
+
+        setImporting(true);
+        setCurrentImport("Iniciando reparación...");
+        let success = 0;
+        let failed = 0;
+
+        try {
+            // 1. Find businesses with google maps URLs
+            const { data, error } = await supabase
+                .from('businesses')
+                .select('id, name, image_url')
+                .like('image_url', '%maps.googleapis.com%');
+
+            if (error) throw error;
+            const businesses = data as any[];
+
+            if (!businesses || businesses.length === 0) {
+                alert("No se encontraron imágenes que requieran reparación.");
+                setImporting(false);
+                setCurrentImport("");
+                return;
+            }
+
+            setCurrentImport(`Reparando ${businesses.length} imágenes...`);
+
+            for (let i = 0; i < businesses.length; i++) {
+                const b = businesses[i];
+                setCurrentImport(`Reparando (${i + 1}/${businesses.length}): ${b.name}`);
+
+                // Extract photo identification from the URL
+                const photoRef = b.image_url.match(/photoreference=([^&]+)/)?.[1] ||
+                    b.image_url.match(/1s([^&]+)/)?.[1];
+
+                if (photoRef) {
+                    const uploadedUrl = await uploadBusinessPhoto(photoRef, b.name);
+                    if (uploadedUrl) {
+                        const { error: updateError } = await (supabase
+                            .from('businesses') as any)
+                            .update({ image_url: uploadedUrl })
+                            .eq('id', b.id);
+
+                        if (!updateError) success++; else failed++;
+                    } else {
+                        failed++;
+                    }
+                } else {
+                }
+            }
+            alert(`Reparación finalizada: ${success} arregladas, ${failed} fallidas.`);
+        } catch (err) {
+            console.error("Error en reparación:", err);
+            alert("Error crítico durante la reparación.");
+        } finally {
+            setImporting(false);
+            setCurrentImport("");
         }
     };
 
@@ -232,10 +356,22 @@ export const SmartIngestion = ({ currentUserId }: Props) => {
         <div className="space-y-6">
             {/* Header & Controls */}
             <div className="bg-slate-800/50 p-6 rounded-xl border border-slate-700">
-                <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-                    <MapPin className="text-indigo-400" />
-                    Radar de Negocios (Zona Centro CP 64000)
-                </h2>
+                <div className="flex justify-between items-start mb-4">
+                    <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                        <MapPin className="text-indigo-400" />
+                        Radar de Negocios (Zona Centro CP 64000)
+                    </h2>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={repairExistingImages}
+                        disabled={importing}
+                        className="text-xs border-amber-900/50 text-amber-500 hover:bg-amber-900/20"
+                    >
+                        <AlertTriangle className="w-3 h-3 mr-1" />
+                        Reparar Imágenes Rotas
+                    </Button>
+                </div>
 
                 <div className="flex gap-4">
                     <div className="relative flex-1">
@@ -270,12 +406,22 @@ export const SmartIngestion = ({ currentUserId }: Props) => {
             {/* Results Grid */}
             {results.length > 0 && (
                 <div className="space-y-4">
-                    <div className="flex justify-between items-center text-slate-400 px-2">
-                        <span>Encontrados: {results.length} negocios</span>
+                    <div className="flex justify-between items-center text-slate-400 px-2 bg-slate-800/30 p-3 rounded-lg border border-slate-700/50">
+                        <div className="flex items-center gap-4">
+                            <span>Encontrados: <strong>{results.length}</strong> negocios</span>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={handleSelectAll}
+                                className="h-8 text-xs border-slate-600 hover:bg-slate-700"
+                            >
+                                {selectedIds.size === results.length ? "Deseleccionar Todo" : "Seleccionar Todo"}
+                            </Button>
+                        </div>
                         {selectedIds.size > 0 && (
-                            <Button onClick={handleImport} disabled={importing} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+                            <Button onClick={handleImport} disabled={importing} className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-900/20">
                                 {importing ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Download className="w-4 h-4 mr-2" />}
-                                {importing ? (currentImport || "Importando...") : `Importar (${selectedIds.size})`}
+                                {importing ? (currentImport || "Importando...") : `Importar Seleccionados (${selectedIds.size})`}
                             </Button>
                         )}
                     </div>

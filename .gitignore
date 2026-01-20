@@ -23,4 +23,11 @@ dist-ssr
 *.sln
 *.sw?
 *.zip
+# Environment
 .env
+*.local
+
+# Scripts with sensitive data
+/*.sql
+scripts/*.js
+!supabase/*.sql

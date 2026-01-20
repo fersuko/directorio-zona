@@ -12,7 +12,7 @@ export const useGoogleMaps = () => {
             return;
         }
 
-        if (window.google?.maps) {
+        if ((window as any).google?.maps) {
             setIsLoaded(true);
             return;
         }
@@ -23,7 +23,7 @@ export const useGoogleMaps = () => {
         script.defer = true;
 
         script.onload = () => setIsLoaded(true);
-        script.onerror = (e) => setLoadError(new Error("Failed to load Google Maps script"));
+        script.onerror = () => setLoadError(new Error("Failed to load Google Maps script"));
 
         document.head.appendChild(script);
 

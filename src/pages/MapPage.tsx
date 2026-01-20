@@ -1,8 +1,7 @@
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import { useNavigate } from "react-router-dom";
 import { useState, useMemo } from "react";
-import { MapPin, Loader2, Filter } from "lucide-react";
-import { useGeolocation } from "../hooks/useGeolocation";
+import { MapPin, Loader2 } from "lucide-react";
 import { useBusinesses } from "../hooks/useBusinesses";
 import "leaflet/dist/leaflet.css";
 import { Icon } from "leaflet";
@@ -11,6 +10,8 @@ import { MONTERREY_CENTRO } from "../constants/geo";
 import iconUrl from "leaflet/dist/images/marker-icon.png";
 import iconRetinaUrl from "leaflet/dist/images/marker-icon-2x.png";
 import shadowUrl from "leaflet/dist/images/marker-shadow.png";
+import { useLocation } from "../context/LocationContext";
+import { useMapEvents } from "react-leaflet";
 
 const defaultIcon = new Icon({
     iconUrl: iconUrl,
@@ -25,9 +26,19 @@ const CENTER = [MONTERREY_CENTRO.lat, MONTERREY_CENTRO.lng] as [number, number];
 
 export default function MapPage() {
     const navigate = useNavigate();
-    const { coordinates, loading: geoLoading, error, getLocation } = useGeolocation();
+    const {
+        coordinates,
+        isManual,
+        loading: geoLoading,
+        error,
+        refreshLocation,
+        setManualLocation,
+        clearManualLocation
+    } = useLocation();
+
     const { businesses, loading: businessesLoading } = useBusinesses();
     const [map, setMap] = useState<any>(null);
+    const [isSettingLocation, setIsSettingLocation] = useState(false);
     const [selectedCategory, setSelectedCategory] = useState("Todos");
 
     // Dynamic Categories
@@ -45,10 +56,22 @@ export default function MapPage() {
     // Fly to user location
     // Note: Removed automatic flyTo on mount to avoid annoying jumps if exploring
     const handleLocate = () => {
-        getLocation();
+        refreshLocation();
         if (coordinates && map) {
             map.flyTo([coordinates.lat, coordinates.lng], 16, { duration: 1.5 });
         }
+    };
+
+    const MapClickHandler = () => {
+        useMapEvents({
+            click: (e) => {
+                if (isSettingLocation) {
+                    setManualLocation(e.latlng.lat, e.latlng.lng);
+                    setIsSettingLocation(false);
+                }
+            },
+        });
+        return null;
     };
 
     if (businessesLoading) {
@@ -98,12 +121,24 @@ export default function MapPage() {
                         url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
                     />
 
+                    <MapClickHandler />
+
                     {/* User Location */}
                     {coordinates && (
                         <Marker position={[coordinates.lat, coordinates.lng]} icon={defaultIcon}>
                             <Popup>
                                 <div className="p-1">
-                                    <h3 className="font-bold text-sm text-primary">¡Estás aquí!</h3>
+                                    <h3 className="font-bold text-sm text-primary">
+                                        {isManual ? "Ubicación fijada" : "Tu ubicación estimada"}
+                                    </h3>
+                                    {isManual && (
+                                        <button
+                                            onClick={clearManualLocation}
+                                            className="text-[10px] text-red-500 hover:underline mt-1"
+                                        >
+                                            Restablecer GPS
+                                        </button>
+                                    )}
                                 </div>
                             </Popup>
                         </Marker>
@@ -147,17 +182,35 @@ export default function MapPage() {
                     </div>
                 </div>
 
-                <button
-                    onClick={handleLocate}
-                    disabled={geoLoading}
-                    className="absolute bottom-6 right-6 z-[400] bg-white text-primary p-3 rounded-full shadow-xl hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
-                >
-                    {geoLoading ? (
-                        <Loader2 className="w-6 h-6 animate-spin" />
-                    ) : (
-                        <MapPin className="w-6 h-6" />
-                    )}
-                </button>
+                <div className="absolute bottom-6 right-6 z-[400] flex flex-col gap-3 items-end">
+                    {/* Manual Location Mode Toggle */}
+                    <button
+                        onClick={() => setIsSettingLocation(!isSettingLocation)}
+                        className={`
+                            px-4 py-2 rounded-full shadow-xl font-medium text-xs transition-all flex items-center gap-2
+                            ${isSettingLocation
+                                ? "bg-brand-red text-white animate-pulse"
+                                : isManual
+                                    ? "bg-green-500 text-white"
+                                    : "bg-white text-slate-900 border border-white/10"}
+                        `}
+                    >
+                        <MapPin className="w-4 h-4" />
+                        {isSettingLocation ? "Toca el mapa..." : isManual ? "Ubicación fijada" : "Fijar mi ubicación"}
+                    </button>
+
+                    <button
+                        onClick={handleLocate}
+                        disabled={geoLoading}
+                        className="bg-white text-primary p-3 rounded-full shadow-xl hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
+                    >
+                        {geoLoading ? (
+                            <Loader2 className="w-6 h-6 animate-spin" />
+                        ) : (
+                            <MapPin className="w-6 h-6" />
+                        )}
+                    </button>
+                </div>
 
                 {error && (
                     <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-[1000] bg-red-500 text-white px-4 py-2 rounded-full text-xs font-medium shadow-lg whitespace-nowrap">

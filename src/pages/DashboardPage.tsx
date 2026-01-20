@@ -103,7 +103,7 @@ export default function DashboardPage() {
 
                 // Combine and format for activity feed
                 const activities = [
-                    ...(reviewsData || []).map(r => ({
+                    ...(reviewsData || []).map((r: any) => ({
                         id: `rev-${r.id}`,
                         type: 'review',
                         title: 'Nueva reseña',
@@ -111,7 +111,7 @@ export default function DashboardPage() {
                         timestamp: r.created_at,
                         icon: Star
                     })),
-                    ...(events || []).map(e => ({
+                    ...(events || []).map((e: any) => ({
                         id: `ev-${e.id}`,
                         type: e.event_type,
                         title: e.event_type === 'business_view' ? 'Nueva visita' :

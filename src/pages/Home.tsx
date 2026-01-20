@@ -10,6 +10,7 @@ import { getBusinessImage } from "../lib/businessImages";
 import { useBusinesses } from "../hooks/useBusinesses";
 import { useAnalytics } from "../hooks/useAnalytics";
 import { useEffect } from "react";
+import { getCategoryInfo } from "../constants/categories";
 
 export default function Home() {
     const navigate = useNavigate();
@@ -19,28 +20,6 @@ export default function Home() {
     useEffect(() => {
         logEvent('page_view', { page: 'home' });
     }, [logEvent]);
-
-    // Helper for category translations and icons
-    const CATEGORY_MAP: Record<string, { label: string; icon: string }> = {
-        'Restaurante': { label: 'Restaurantes', icon: '🍽️' },
-        'Cafetería': { label: 'Cafeterías', icon: '☕' },
-        'Gimnasio': { label: 'Gimnasio', icon: '💪' },
-        'Tienda': { label: 'Tiendas', icon: '🛒' },
-        'Bar': { label: 'Bares', icon: '🍹' },
-        'Belleza': { label: 'Belleza', icon: '✂️' },
-        'Salud': { label: 'Salud', icon: '🏥' },
-        'Car repair': { label: 'Talleres', icon: '🚗' },
-        'Laundry': { label: 'Lavandería y Tintorería', icon: '🧺' },
-        'Point of interest': { label: 'Interés', icon: '📍' },
-        'Lodging': { label: 'Hospedaje', icon: '🏨' },
-        'Real estate agency': { label: 'Bienes Raíces', icon: '🏠' },
-        'Veterinary care': { label: 'Veterinaria', icon: '🐾' },
-        'Default': { label: 'Otros', icon: '🏪' }
-    };
-
-    const getCategoryInfo = (category: string) => {
-        return CATEGORY_MAP[category] || { label: category, icon: CATEGORY_MAP['Default'].icon };
-    };
 
     const premiumBusinesses = businesses.filter(b => b.isPremium);
     const regularBusinesses = businesses.filter(b => !b.isPremium);

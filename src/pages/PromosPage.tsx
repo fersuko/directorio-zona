@@ -1,20 +1,23 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { MapPin, Navigation, Tag } from "lucide-react";
-import { useGeolocation } from "../hooks/useGeolocation";
+import { useLocation } from "../context/LocationContext";
 import { useBusinesses } from "../hooks/useBusinesses";
 import { getBusinessImage } from "../lib/businessImages";
 import { calculateDistance, formatDistance } from "../utils/distance";
-import type { Business } from "../types";
 import { Button } from "../components/ui/Button";
 
 export default function PromosPage() {
     const navigate = useNavigate();
-    const { coordinates, loading: geoLoading, error, getLocation } = useGeolocation();
+    const { coordinates, loadingStatus: geoLoading, error, refreshLocation } = useLocation() as any;
     const { businesses, loading: businessesLoading } = useBusinesses();
+    const [transportMode, setTransportMode] = useState<'walking' | 'driving'>('walking');
 
     const loading = geoLoading || businessesLoading;
+
+    // Radius in KM
+    const RADIUS = transportMode === 'walking' ? 1.2 : 5.0;
 
     const nearbyBusinesses = useMemo(() => {
         if (!coordinates) return [];
@@ -29,8 +32,9 @@ export default function PromosPage() {
                     business.lng
                 ),
             }))
+            .filter(b => b.distance <= RADIUS)
             .sort((a, b) => a.distance - b.distance);
-    }, [coordinates, businesses]);
+    }, [coordinates, businesses, RADIUS]);
 
     return (
         <div className="p-4 pb-24 min-h-screen bg-background space-y-6">
@@ -40,6 +44,30 @@ export default function PromosPage() {
                     Descubre promociones y lugares a tu alrededor.
                 </p>
             </div>
+
+            {/* Transport Mode Switcher */}
+            {coordinates && (
+                <div className="flex p-1 bg-muted rounded-xl gap-1">
+                    <button
+                        onClick={() => setTransportMode('walking')}
+                        className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-all ${transportMode === 'walking'
+                                ? "bg-background shadow-sm text-foreground"
+                                : "text-muted-foreground"
+                            }`}
+                    >
+                        🚶 Caminando
+                    </button>
+                    <button
+                        onClick={() => setTransportMode('driving')}
+                        className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-all ${transportMode === 'driving'
+                                ? "bg-background shadow-sm text-foreground"
+                                : "text-muted-foreground"
+                            }`}
+                    >
+                        🚗 En Auto
+                    </button>
+                </div>
+            )}
 
             {/* Location Status */}
             {!coordinates && (
@@ -53,7 +81,7 @@ export default function PromosPage() {
                             Necesitamos saber dónde estás para mostrarte las mejores ofertas cercanas.
                         </p>
                     </div>
-                    <Button onClick={getLocation} disabled={loading} className="w-full">
+                    <Button onClick={refreshLocation} disabled={loading} className="w-full">
                         {loading ? "Localizando..." : "Activar Ubicación"}
                     </Button>
                     {error && <p className="text-xs text-red-500">{error}</p>}
@@ -63,53 +91,69 @@ export default function PromosPage() {
             {/* Results */}
             {coordinates && (
                 <div className="space-y-4">
-                    {nearbyBusinesses.map((business, index) => (
-                        <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: index * 0.1 }}
-                            key={business.id}
-                            onClick={() => navigate(`/business/${business.id}`)}
-                            className="glass-card rounded-xl overflow-hidden cursor-pointer group active:scale-98 transition-transform"
-                        >
-                            <div className="relative h-32">
-                                <img
-                                    src={getBusinessImage(business)}
-                                    alt={business.name}
-                                    className="w-full h-full object-cover"
-                                />
-                                <div className="absolute top-2 right-2 bg-black/60 backdrop-blur-md px-2 py-1 rounded-full flex items-center gap-1 text-xs font-medium text-white">
-                                    <Navigation className="w-3 h-3" />
-                                    {formatDistance(business.distance)}
-                                </div>
-                                {business.isPremium && (
-                                    <div className="absolute bottom-2 left-2 bg-yellow-500 text-black px-2 py-0.5 rounded text-[10px] font-bold">
-                                        PROMO
+                    {nearbyBusinesses.length > 0 ? (
+                        nearbyBusinesses.map((business, index) => (
+                            <motion.div
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: index * 0.1 }}
+                                key={business.id}
+                                onClick={() => navigate(`/business/${business.id}`)}
+                                className="glass-card rounded-xl overflow-hidden cursor-pointer group active:scale-98 transition-transform"
+                            >
+                                <div className="relative h-32">
+                                    <img
+                                        src={getBusinessImage(business)}
+                                        alt={business.name}
+                                        className="w-full h-full object-cover"
+                                    />
+                                    <div className="absolute top-2 right-2 bg-black/60 backdrop-blur-md px-2 py-1 rounded-full flex items-center gap-1 text-xs font-medium text-white">
+                                        <Navigation className="w-3 h-3" />
+                                        {formatDistance(business.distance)}
                                     </div>
-                                )}
-                            </div>
-                            <div className="p-3">
-                                <div className="flex justify-between items-start">
-                                    <div>
-                                        <h3 className="font-bold">{business.name}</h3>
-                                        <p className="text-xs text-muted-foreground">{business.category}</p>
-                                    </div>
+                                    {business.isPremium && (
+                                        <div className="absolute bottom-2 left-2 bg-yellow-500 text-black px-2 py-0.5 rounded text-[10px] font-bold">
+                                            PROMO
+                                        </div>
+                                    )}
                                 </div>
+                                <div className="p-3">
+                                    <div className="flex justify-between items-start">
+                                        <div>
+                                            <h3 className="font-bold">{business.name}</h3>
+                                            <p className="text-xs text-muted-foreground">{business.category}</p>
+                                        </div>
+                                    </div>
 
-                                {/* Simulated Promo Text */}
-                                {business.isPremium ? (
-                                    <div className="mt-3 flex items-center gap-2 text-xs text-yellow-500 bg-yellow-500/10 p-2 rounded-lg border border-yellow-500/20">
-                                        <Tag className="w-3 h-3" />
-                                        <span className="font-medium">2x1 en bebidas seleccionadas</span>
-                                    </div>
-                                ) : (
-                                    <p className="mt-2 text-xs text-muted-foreground line-clamp-1">
-                                        {business.description || "Visítanos y conoce nuestros servicios."}
-                                    </p>
-                                )}
+                                    {/* Simulated Promo Text */}
+                                    {business.isPremium ? (
+                                        <div className="mt-3 flex items-center gap-2 text-xs text-yellow-500 bg-yellow-500/10 p-2 rounded-lg border border-yellow-500/20">
+                                            <Tag className="w-3 h-3" />
+                                            <span className="font-medium">2x1 en bebidas seleccionadas</span>
+                                        </div>
+                                    ) : (
+                                        <p className="mt-2 text-xs text-muted-foreground line-clamp-1">
+                                            {business.description || "Visítanos y conoce nuestros servicios."}
+                                        </p>
+                                    )}
+                                </div>
+                            </motion.div>
+                        ))
+                    ) : (
+                        <div className="text-center py-20 opacity-50 flex flex-col items-center gap-4">
+                            <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center">
+                                <MapPin className="w-8 h-8" />
                             </div>
-                        </motion.div>
-                    ))}
+                            <div className="space-y-1">
+                                <p className="font-medium">No hay locales tan cerca</p>
+                                <p className="text-xs px-10">
+                                    {transportMode === 'walking'
+                                        ? "No encontramos nada en un radio de 1.2km. ¡Prueba en modo auto!"
+                                        : "No encontramos locales registrados cerca de tu ubicación actual."}
+                                </p>
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
         </div>

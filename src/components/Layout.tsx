@@ -2,6 +2,7 @@ import { Outlet, Link, useLocation } from "react-router-dom";
 import { Home, Map, Search, User, Star } from "lucide-react";
 import { cn } from "../lib/utils";
 import { AIChatModal } from "./ai/AIChatModal";
+import { PWAInstallPrompt } from "./PWAInstallPrompt";
 
 export default function Layout() {
     const location = useLocation();
@@ -41,6 +42,7 @@ export default function Layout() {
             </nav>
 
             <AIChatModal />
+            <PWAInstallPrompt />
         </div>
     );
 }

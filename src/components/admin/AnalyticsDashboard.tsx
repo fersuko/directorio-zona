@@ -36,7 +36,7 @@ export function AnalyticsDashboard() {
     useEffect(() => {
         const fetchStats = async () => {
             try {
-                const { data, error } = await (supabase.rpc as any)('get_analytics_summary', { time_range: timeRange });
+                const { data, error } = await (supabase as any).rpc('get_analytics_summary', { time_range: timeRange });
                 if (error) {
                     console.error("Error fetching analytics:", error);
                     setStats({});
@@ -71,13 +71,12 @@ export function AnalyticsDashboard() {
 
     const handleModerate = async (id: string, approve: boolean) => {
         try {
-            const { error } = await supabase
-                .from('reviews')
-                .update({ status: approve ? 'approved' : 'rejected' } as any)
+            const { error } = await (supabase.from('reviews') as any)
+                .update({ status: approve ? 'approved' : 'rejected' })
                 .eq('id', id);
 
             if (error) throw error;
-            setPendingReviews(prev => prev.filter(r => r.id !== id));
+            setPendingReviews(prev => prev.filter((r: any) => r.id !== id));
         } catch (err) {
             console.error("Error moderating review:", err);
         }

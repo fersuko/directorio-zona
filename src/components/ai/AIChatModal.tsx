@@ -3,6 +3,7 @@ import { X, Send, User, Bot } from "lucide-react";
 import { Button } from "../ui/Button";
 import { motion, AnimatePresence } from "framer-motion";
 import { useBusinesses } from "../../hooks/useBusinesses";
+import { CATEGORY_MAP } from "../../constants/categories";
 
 interface Message {
     id: number;
@@ -63,14 +64,27 @@ export function AIChatModal() {
         setTimeout(() => {
             const query = newUserMessage.text.toLowerCase();
 
-            // Search in our businesses
-            const relatedBusinesses = businesses.filter(b =>
-                b.name.toLowerCase().includes(query) ||
-                b.category.toLowerCase().includes(query) ||
-                b.description?.toLowerCase().includes(query)
-            );
+            // 1. Identify intent by category keywords
+            let matchedCategory: string | null = null;
+            for (const [catId, info] of Object.entries(CATEGORY_MAP)) {
+                if (info.keywords.some(kw => query.includes(kw))) {
+                    matchedCategory = catId;
+                    break;
+                }
+            }
 
-            // Prioritize Premium
+            // 2. Filter businesses
+            const relatedBusinesses = businesses.filter(b => {
+                const nameMatch = b.name.toLowerCase().includes(query);
+                const descMatch = b.description?.toLowerCase().includes(query);
+                const catMatch = matchedCategory ? b.category === matchedCategory : false;
+                // Also check if the raw category string includes any keyword if no direct category match
+                const rawCatMatch = b.category.toLowerCase().includes(query);
+
+                return nameMatch || descMatch || catMatch || rawCatMatch;
+            });
+
+            // 3. Prioritize Premium
             const premiumMatches = relatedBusinesses.filter(b => b.isPremium);
             const standardMatches = relatedBusinesses.filter(b => !b.isPremium);
 
@@ -78,23 +92,42 @@ export function AIChatModal() {
 
             if (relatedBusinesses.length > 0) {
                 if (premiumMatches.length > 0) {
-                    const best = premiumMatches[0];
-                    aiResponseText = `¡Excelente elección! Te recomiendo mucho visitar **${best.name}**. Es de nuestros lugares premium en ${best.address}. `;
+                    const best = premiumMatches[Math.floor(Math.random() * premiumMatches.length)];
+                    aiResponseText = `¡Nombre compadre! Te traigo una joyita. Tienes que ir a **${best.name}**. Es de nuestros lugares premium y está en ${best.address}. `;
+
                     if (premiumMatches.length > 1) {
-                        aiResponseText += `También tengo en la mira a ${premiumMatches.slice(1, 3).map(b => b.name).join(' y ')}.`;
+                        const others = premiumMatches.filter(b => b.id !== best.id).slice(0, 2);
+                        if (others.length > 0) {
+                            aiResponseText += `También están con madre ${others.map(b => b.name).join(' y ')}.`;
+                        }
+                    } else if (standardMatches.length > 0) {
+                        aiResponseText += `O si buscas algo más tranqui, date una vuelta por ${standardMatches[0].name}.`;
                     }
                 } else {
                     const best = standardMatches[0];
-                    aiResponseText = `Encontré **${best.name}** en la categoría de ${best.category}. Se encuentra en ${best.address}. ¿Te gustaría saber más?`;
+                    const catInfo = matchedCategory ? CATEGORY_MAP[matchedCategory] : null;
+                    const catText = catInfo ? `en la categoría de ${catInfo.label}` : `de ese tipo`;
+
+                    aiResponseText = `Fíjate que encontré **${best.name}** ${catText}. Se encuentra en ${best.address}. ¿Te late?`;
                 }
             } else {
-                // Out of context handler
-                if (query.includes("hola") || query.includes("que onda")) {
-                    aiResponseText = "¡Qué onda! Soy tu guía especializado. Pregúntame por comida, tragos o servicios aquí en el centro de Monterrey.";
+                // Out of context handler or general greetings
+                if (query.includes("hola") || query.includes("buen")) {
+                    aiResponseText = "¡Qué onda! Soy ZonaBot. ¿En qué soy bueno? Te puedo recomendar donde comer, echar trago o algún local de salud o servicios aquí en el centro de Monterrey.";
+                } else if (query.includes("recomienda") || query.includes("mejor") || query.includes("top")) {
+                    const allPremium = businesses.filter(b => b.isPremium);
+                    if (allPremium.length > 0) {
+                        const best = allPremium[Math.floor(Math.random() * allPremium.length)];
+                        aiResponseText = `¡Claro compadre! De lo más top aquí en el centro te recomiendo **${best.name}**. Es un lugar Premium y se la rifan bastante. Está en ${best.address}.`;
+                    } else {
+                        aiResponseText = "Ahorita estoy checando qué hay de nuevo, pero si me dices qué categoría buscas (comida, salud, etc.) te encuentro algo de volada.";
+                    }
+                } else if (query.includes("salud") || query.includes("doctor") || query.includes("enfermo")) {
+                    aiResponseText = "Para temas de salud, te recomiendo buscar clínicas o consultorios aquí en el centro. Deja veo qué tenemos... ¡Ah caray! No veo uno registrado justo ahorita con ese nombre, pero busca 'Salud' en el mapa.";
                 } else if (query.includes("directorio") || query.includes("zona")) {
-                    aiResponseText = "Soy el alma del Directorio Zona. Mi misión es que encuentres lo mejor de Monterrey sin perder el tiempo.";
+                    aiResponseText = "Soy el alma del Directorio Zona. Mi misión es que encuentres lo mejor de Monterrey sin perder el tiempo. ¡Pregúntame lo que sea del centro!";
                 } else {
-                    aiResponseText = "Chale, no encontré nada exactamente así en nuestro directorio. Pero si buscas algo de comer, beber o servicios, ¡soy experto! ¿Qué se te antoja?";
+                    aiResponseText = "Chale, no encontré nada exactamente así en nuestro directorio ahorita. Pero si buscas algo de comer, servicios o una lavandería, ¡aquí tengo la lista! ¿Qué más se te ofrece?";
                 }
             }
 

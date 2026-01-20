@@ -17,6 +17,7 @@ import JoinPage from "./pages/JoinPage";
 import FavoritesPage from "./pages/FavoritesPage";
 import TermsPage from "./pages/TermsPage";
 import PrivacyPage from "./pages/PrivacyPage";
+import InstallPage from "./pages/InstallPage";
 import { useEffect } from "react";
 
 import { supabase } from "./lib/supabase";
@@ -82,6 +83,7 @@ function AppContent() {
           <Route path="unete" element={<JoinPage />} />
           <Route path="terms" element={<TermsPage />} />
           <Route path="privacy" element={<PrivacyPage />} />
+          <Route path="instalar" element={<InstallPage />} />
         </Route>
 
         {/* Rutas de Administración - Sin footer ni chat IA */}
@@ -97,10 +99,14 @@ function AppContent() {
   );
 }
 
+import { LocationProvider } from "./context/LocationContext";
+
 function App() {
   return (
     <AuthProvider>
-      <AppContent />
+      <LocationProvider>
+        <AppContent />
+      </LocationProvider>
     </AuthProvider>
   );
 }

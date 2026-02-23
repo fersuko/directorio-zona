@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { User, Shield, Calendar, Trash2, Store, Crown, Search } from "lucide-react";
+import { User, Shield, Calendar, Trash2, Store, Crown, Search, Key } from "lucide-react";
 import { Button } from "../ui/Button";
 
 interface Profile {
@@ -15,9 +15,10 @@ interface Profile {
 interface UserTableProps {
     users: Profile[];
     onDelete: (id: string, email: string) => void;
+    onResetPasswordAction: (user: Profile) => void;
 }
 
-export function UserTable({ users, onDelete }: UserTableProps) {
+export function UserTable({ users, onDelete, onResetPasswordAction }: UserTableProps) {
     const [searchTerm, setSearchTerm] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -199,6 +200,14 @@ export function UserTable({ users, onDelete }: UserTableProps) {
                                         </td>
                                         <td className="py-3 px-4 text-right">
                                             <div className="flex justify-end gap-2 items-center">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    title="Restablecer Contraseña"
+                                                    onClick={() => onResetPasswordAction(user)}
+                                                >
+                                                    <Key className="w-4 h-4 text-muted-foreground hover:text-yellow-500" />
+                                                </Button>
                                                 <Button
                                                     variant="ghost"
                                                     size="sm"

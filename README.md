@@ -1,47 +1,70 @@
-# 📍 Directorio Zona - v1.0.0 (Launch Version)
+# 🏗️ Directorio Zona - Monterrey
 
-Directorio Zona es una plataforma digital diseñada como el directorio comercial y turístico definitivo para la zona centro de Monterrey. Construida como una **PWA (Progressive Web App)** de alto rendimiento, está optimizada para el descubrimiento orgánico y la facilidad de uso tanto para usuarios como para dueños de negocios.
-
-## 🚀 Versión de Lanzamiento (v1.0.0)
-
-Esta es la versión oficial de lanzamiento, que incluye todas las funcionalidades clave para operar el directorio de manera profesional:
-
-### ✨ Características Principales
-- **Branding Personalizado**: Identidad visual completa con el logo distintivo de la marca.
-- **PWA Ready**: Instalable en dispositivos iOS y Android para una experiencia nativa.
-- **Optimización SEO**: Implementación de Meta Tags dinámicos y Schema JSON-LD para indexación inteligente en Google.
-- **Sitemap Dinámico**: Generación automática de `sitemap.xml` incluyendo todos los negocios registrados.
-- **Panel Administrativo Robusto**: Moderación de reseñas, gestión de usuarios y control total sobre los negocios.
-- **Panel de Dueños**: Espacio para que cada comerciante gestione su información, fotos y ofertas.
-- **Mapa Interactivo**: Localización precisa de establecimientos en el corazón de Monterrey.
+Directorio Zona es una plataforma moderna para la gestión y exploración de negocios locales en el centro de Monterrey, construida con un stack de alto rendimiento y enfocado en la experiencia del usuario.
 
 ## 🛠️ Stack Tecnológico
-- **Frontend**: React 19 + TypeScript + Vite
-- **Estilos**: Tailwind CSS (UI Premium y Moderna)
-- **Backend**: Supabase (Base de Datos Real-time, Auth, Storage)
-- **Mapas**: Leaflet / React Leaflet
-- **Animaciones**: Framer Motion
 
-## 📦 Instalación y Desarrollo local
+### **Frontend Core**
+- **React 19** - Librería principal para la interfaz de usuario.
+- **TypeScript** - Tipado estático para un desarrollo robusto y mantenible.
+- **Vite 6** - Herramienta de compilación ultra rápida.
 
-1. Clonar el repositorio.
-2. Instalar dependencias:
+### **Backend & Database (BaaS)**
+- **Supabase** - Infraestructura completa:
+  - **Auth**: Autenticación segura (Email/Password + Google OAuth).
+  - **PostgreSQL**: Base de datos relacional potente.
+  - **Storage**: Gestión de imágenes de negocios.
+
+### **Estado y Rutas**
+- **Zustand** - Gestión de estado global simplificada y eficiente.
+- **React Router 7** - Manejo de navegación y rutas dinámicas.
+
+### **UI & Diseño**
+- **TailwindCSS** - Estilizado mediante utilidades.
+- **Framer Motion** - Animaciones y transiciones premium.
+- **Lucide React** - Set de iconos modernos y consistentes.
+- **Diseño**: Enfoque en Dark Mode, Glassmorphism y Micro-animaciones.
+
+### **Mapas e Interacción**
+- **Leaflet & React Leaflet** - Mapas interactivos para localización de negocios.
+- **Browser Image Compression** - Optimización automática de imágenes.
+- **Canvas Confetti** - Micro-interacciones de feedback visual.
+
+### **PWA & SEO**
+- **Vite PWA** - Aplicación web progresiva instalable.
+- **React Helmet Async** - Optimización SEO y meta-tags dinámicos.
+
+---
+
+## 📁 Estructura del Proyecto
+
+```bash
+src/
+├── components/     # Componentes reutilizables (UI, Admin, Dashboard)
+├── pages/          # Vistas principales de la aplicación
+├── hooks/          # Lógica compartida y custom hooks
+├── lib/            # Configuraciones (Supabase, Geocoding, etc.)
+├── types/          # Definiciones de TypeScript e interfaces de DB
+└── data/           # Datos estáticos y archivos de respaldo
+```
+
+## 🚀 Desarrollo Local
+
+1. Instalar dependencias:
    ```bash
    npm install
    ```
-3. Configurar variables de entorno en `.env` (Basarse en `.env.example`).
-4. Iniciar servidor de desarrollo:
+
+2. Ejecutar servidor de desarrollo:
    ```bash
    npm run dev
    ```
 
-## 🚢 Despliegue (cPanel / Servidores Estáticos)
-
-Para preparar el proyecto para producción:
-```bash
-npm run build
-```
-Este comando genera la carpeta `dist/` y actualiza automáticamente el `sitemap.xml` en la carpeta pública.
+3. Crear build de producción:
+   ```bash
+   npm run build
+   ```
 
 ---
-Hecho con ❤️ en Monterrey.
+
+*Hecho con ❤️ en Monterrey.*

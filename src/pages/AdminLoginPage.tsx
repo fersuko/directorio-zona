@@ -18,15 +18,21 @@ export default function AdminLoginPage() {
         setError(null);
 
         try {
-            console.log("[AdminLogin] Authenticating...");
+            const cleanEmail = email.trim();
+            const cleanPassword = password; // Do NOT trim passwords, they might have intentionally leading/trailing spaces
+
+            console.log("[AdminLogin] Authenticating for:", cleanEmail);
 
             // Just authenticate - role check will happen in AdminDashboard
             const { error: authError } = await supabase.auth.signInWithPassword({
-                email,
-                password,
+                email: cleanEmail,
+                password: cleanPassword,
             });
 
-            if (authError) throw authError;
+            if (authError) {
+                console.warn("[AdminLogin] Auth error returned:", authError.status, authError.message);
+                throw authError;
+            }
 
             console.log("[AdminLogin] Login successful, navigating to dashboard...");
 
@@ -97,24 +103,53 @@ export default function AdminLoginPage() {
                         <motion.div
                             initial={{ opacity: 0, height: 0 }}
                             animate={{ opacity: 1, height: "auto" }}
-                            className="p-3 rounded-lg bg-red-950/30 border border-red-900/50 flex items-start gap-2"
+                            className="p-3 rounded-lg bg-red-950/30 border border-red-900/50 space-y-2"
                         >
-                            <AlertCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
-                            <p className="text-red-400 text-xs">{error}</p>
+                            <div className="flex items-start gap-2">
+                                <AlertCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+                                <p className="text-red-400 text-xs font-medium">{error}</p>
+                            </div>
+                            {error.includes("Invalid login credentials") && (
+                                <p className="text-[10px] text-red-300/70 border-t border-red-900/30 pt-1 leading-relaxed">
+                                    Tip: Asegúrate de que tu usuario tenga habilitado el proveedor "Email" en Supabase. Si usaste Google antes, podrías necesitar vincular la identidad.
+                                </p>
+                            )}
                         </motion.div>
                     )}
 
-                    <Button
-                        type="submit"
-                        className="w-full bg-white text-black hover:bg-zinc-200 font-semibold py-6"
-                        disabled={loading}
-                    >
-                        {loading ? (
-                            <Loader2 className="w-5 h-5 animate-spin" />
-                        ) : (
-                            "Ingresar al Panel"
-                        )}
-                    </Button>
+                    <div className="space-y-3">
+                        <Button
+                            type="submit"
+                            className="w-full bg-white text-black hover:bg-zinc-200 font-semibold py-6"
+                            disabled={loading}
+                        >
+                            {loading ? (
+                                <Loader2 className="w-5 h-5 animate-spin" />
+                            ) : (
+                                "Ingresar al Panel"
+                            )}
+                        </Button>
+
+                        <button
+                            type="button"
+                            onClick={async () => {
+                                console.log("[AdminLogin] Manual connection check...");
+                                try {
+                                    const start = Date.now();
+                                    const { error } = await supabase.from('profiles').select('count', { count: 'exact', head: true }).limit(1);
+                                    const duration = Date.now() - start;
+                                    if (error) throw error;
+                                    alert(`¡Conexión OK! Respondido en ${duration}ms.\nSupabase es accesible desde tu red.`);
+                                } catch (e: any) {
+                                    alert(`Error de conexión: ${e.message}\nEs posible que tu red o firewall estén bloqueando a Supabase.`);
+                                }
+                            }}
+                            className="w-full text-[10px] text-zinc-500 hover:text-zinc-300 transition-colors py-1 flex items-center justify-center gap-1"
+                        >
+                            <Shield className="w-3 h-3" />
+                            ¿Problemas de conexión? Verificar ahora
+                        </button>
+                    </div>
                 </form>
 
                 <div className="mt-6 text-center">

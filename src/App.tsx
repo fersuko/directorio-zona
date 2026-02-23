@@ -18,6 +18,7 @@ import FavoritesPage from "./pages/FavoritesPage";
 import TermsPage from "./pages/TermsPage";
 import PrivacyPage from "./pages/PrivacyPage";
 import InstallPage from "./pages/InstallPage";
+import MarketingPage from "./pages/MarketingPage";
 import { useEffect } from "react";
 
 import { supabase } from "./lib/supabase";
@@ -84,6 +85,7 @@ function AppContent() {
           <Route path="terms" element={<TermsPage />} />
           <Route path="privacy" element={<PrivacyPage />} />
           <Route path="instalar" element={<InstallPage />} />
+          <Route path="presentacion" element={<MarketingPage />} />
         </Route>
 
         {/* Rutas de Administración - Sin footer ni chat IA */}

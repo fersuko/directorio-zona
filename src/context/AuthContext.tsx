@@ -48,17 +48,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 const sessionPromise = supabase.auth.getSession();
                 const timeoutPromise = new Promise<{ data: { session: null } }>((resolve) =>
                     setTimeout(() => {
-                        console.warn("[AuthContext] getSession timed out after 8 seconds");
+                        console.warn("[AuthContext] getSession timed out after 15 seconds. Proceeding with null session.");
                         resolve({ data: { session: null } });
-                    }, 8000)
+                    }, 15000)
                 );
 
                 const { data: { session } } = await Promise.race([sessionPromise, timeoutPromise]);
-                console.log("[AuthContext] Session result:", session ? "found" : "none");
 
                 if (mounted) {
                     const currentUser = session?.user ?? null;
                     setUser(currentUser);
+                    console.log("[AuthContext] Initial session set:", currentUser ? "User Logged In" : "No Session");
 
                     // Fetch profile if user exists
                     if (currentUser) {

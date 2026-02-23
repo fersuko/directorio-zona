@@ -12,6 +12,7 @@ import { ReviewModeration } from "../components/admin/ReviewModeration";
 import { StatsCard } from "../components/dashboard/StatsCard";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 import { TransferOwnershipModal } from "../components/admin/TransferOwnershipModal";
+import { ResetPasswordModal } from "../components/admin/ResetPasswordModal";
 import { AnalyticsDashboard } from "../components/admin/AnalyticsDashboard";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
@@ -40,6 +41,7 @@ export default function AdminDashboard() {
     const [leadToConvert, setLeadToConvert] = useState<any>(null);
     const [editingBusiness, setEditingBusiness] = useState<Business | null>(null);
     const [transferData, setTransferData] = useState<{ isOpen: boolean; businessId?: string; businessName?: string }>({ isOpen: false });
+    const [resetPasswordData, setResetPasswordData] = useState<{ isOpen: boolean; user?: any }>({ isOpen: false });
     const [deleteConfirm, setDeleteConfirm] = useState<{ type: 'business' | 'user' | 'lead'; id: any; name: string; count?: number } | null>(null);
 
     // Filters State
@@ -243,6 +245,39 @@ export default function AdminDashboard() {
         } catch (error) {
             console.error("Error deleting:", error);
             alert("Error al eliminar");
+        }
+    };
+
+    const handleResetPasswordClick = (userProfile: any) => {
+        setResetPasswordData({ isOpen: true, user: userProfile });
+    };
+
+    const handleResetEmail = async (email: string) => {
+        try {
+            const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                redirectTo: `${window.location.origin}/login`
+            });
+            if (error) throw error;
+            alert(`Éxito: Se ha enviado un enlace de recuperación a ${email}.`);
+        } catch (error: any) {
+            console.error("Error resetting password via email:", error);
+            alert(`Error: ${error.message || 'No se pudo enviar el correo.'}`);
+            throw error;
+        }
+    };
+
+    const handleResetManual = async (targetUserId: string, email: string, newPass: string) => {
+        try {
+            const { error } = await (supabase as any).rpc('admin_set_user_password', {
+                target_user_id: targetUserId,
+                new_password: newPass
+            });
+            if (error) throw error;
+            alert(`Éxito: Contraseña de ${email} actualizada manualmente.`);
+        } catch (error: any) {
+            console.error("Error resetting password manually:", error);
+            alert(`Error: ${error.message || 'No se pudo actualizar la contraseña.'}`);
+            throw error;
         }
     };
 
@@ -477,6 +512,7 @@ export default function AdminDashboard() {
                             <UserTable
                                 users={users}
                                 onDelete={handleDeleteUser}
+                                onResetPasswordAction={handleResetPasswordClick}
                             />
                         </>
                     )}
@@ -533,6 +569,14 @@ export default function AdminDashboard() {
                 onConfirm={confirmTransfer}
                 businessName={transferData.businessName || ""}
                 users={users}
+            />
+
+            <ResetPasswordModal
+                isOpen={resetPasswordData.isOpen}
+                onClose={() => setResetPasswordData({ ...resetPasswordData, isOpen: false })}
+                onResetEmail={handleResetEmail}
+                onResetManual={handleResetManual}
+                user={resetPasswordData.user}
             />
         </div>
     );

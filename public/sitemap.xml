@@ -126,6 +126,12 @@
     <priority>0.6</priority>
   </url>
   <url>
+    <loc>https://directoriozona.com/business/1039</loc>
+    <lastmod>2026-01-21</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
     <loc>https://directoriozona.com/business/802</loc>
     <lastmod>2026-01-19</lastmod>
     <changefreq>monthly</changefreq>
@@ -667,12 +673,6 @@
   </url>
   <url>
     <loc>https://directoriozona.com/business/888</loc>
-    <lastmod>2026-01-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
-  </url>
-  <url>
-    <loc>https://directoriozona.com/business/889</loc>
     <lastmod>2026-01-19</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
@@ -1562,6 +1562,12 @@
   <url>
     <loc>https://directoriozona.com/business/1038</loc>
     <lastmod>2026-01-20</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://directoriozona.com/business/889</loc>
+    <lastmod>2026-01-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
